@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <id>MathNet.Numerics.MKL</id>
+    <version>1.2.0</version>
+    <title>Math.NET Numerics - MKL Native Libraries</title>
+    <description>MKL native libraries for Math.NET Numerics.</description>
+    <authors>Marcus Cuda, Christoph Ruegg, Jurgen Van Gael</authors>
+    <owners>Christoph Ruegg</owners>
+    <projectUrl>http://numerics.mathdotnet.com/</projectUrl>
+    <iconUrl>http://www.mathdotnet.com/images/MathNet128.png</iconUrl>
+    <licenseUrl>http://mathnetnumerics.codeplex.com/license</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>math numeric statistics probability integration interpolation linear algebra matrix fft</tags>
+    <dependencies>
+            <dependency id="MathNet.Numerics" version="2.3.0"/>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src=".\x86\MathNET.Numerics.MKL.dll" target="NativeBinaries\x86\MathNET.Numerics.MKL.dll" />
+        <file src=".\x64\MathNET.Numerics.MKL.dll" target="NativeBinaries\amd64\MathNET.Numerics.MKL.dll" />
+    </files>
+</package>
