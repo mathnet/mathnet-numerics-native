@@ -17,7 +17,7 @@
         </dependencies>
     </metadata>
     <files>
-        <file src=".\x86\MathNET.Numerics.MKL.dll" target="NativeBinaries\x86\MathNET.Numerics.MKL.dll" />
-        <file src=".\x64\MathNET.Numerics.MKL.dll" target="NativeBinaries\amd64\MathNET.Numerics.MKL.dll" />
+        <file src=".\x86\MathNet.Numerics.MKL.dll" target="NativeBinaries\x86\MathNet.Numerics.MKL.dll" />
+        <file src=".\x64\MathNet.Numerics.MKL.dll" target="NativeBinaries\amd64\MathNet.Numerics.MKL.dll" />
     </files>
 </package>
