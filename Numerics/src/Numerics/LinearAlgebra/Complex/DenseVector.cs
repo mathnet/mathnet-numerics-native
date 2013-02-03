@@ -53,7 +53,10 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         /// </summary>
         readonly Complex[] _values;
 
-        internal DenseVector(DenseVectorStorage<Complex> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DenseVector"/> class.
+        /// </summary>
+        public DenseVector(DenseVectorStorage<Complex> storage)
             : base(storage)
         {
             _length = storage.Length;
@@ -106,7 +109,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         public DenseVector(Vector<Complex> other)
             : this(other.Count)
         {
-            other.Storage.CopyTo(Storage, skipClearing: true);
+            other.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>

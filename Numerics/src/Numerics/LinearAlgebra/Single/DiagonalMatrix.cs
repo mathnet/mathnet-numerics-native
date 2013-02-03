@@ -52,7 +52,10 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// <value>The matrix's data.</value>
         readonly float[] _data;
 
-        internal DiagonalMatrix(DiagonalMatrixStorage<float> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class.
+        /// </summary>
+        public DiagonalMatrix(DiagonalMatrixStorage<float> storage)
             : base(storage)
         {
             _storage = storage;
@@ -150,7 +153,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         public DiagonalMatrix(Matrix<float> matrix)
             : this(matrix.RowCount, matrix.ColumnCount)
         {
-            matrix.Storage.CopyTo(Storage, skipClearing: true);
+            matrix.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>
@@ -678,118 +681,6 @@ namespace MathNet.Numerics.LinearAlgebra.Single
             return ret;
         }
 
-        /// <summary>
-        /// Copies the requested column elements into the given vector.
-        /// </summary>
-        /// <param name="columnIndex">The column to copy elements from.</param>
-        /// <param name="rowIndex">The row to start copying from.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="result">The <see cref="Vector{T}"/> to copy the column into.</param>
-        /// <exception cref="ArgumentNullException">If the result <see cref="Vector{T}"/> is <see langword="null" />.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> is negative,
-        /// or greater than or equal to the number of columns.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="rowIndex"/> is negative,
-        /// or greater than or equal to the number of rows.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="rowIndex"/> + <paramref name="length"/>  
-        /// is greater than or equal to the number of rows.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="length"/> is not positive.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <strong>result.Count &lt; length</strong>.</exception>
-        public override void Column(int columnIndex, int rowIndex, int length, Vector<float> result)
-        {
-            if (result == null)
-            {
-                throw new ArgumentNullException("result");
-            }
-
-            if (columnIndex >= ColumnCount || columnIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("columnIndex");
-            }
-
-            if (rowIndex >= RowCount || rowIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("rowIndex");
-            }
-
-            if (rowIndex + length > RowCount)
-            {
-                throw new ArgumentOutOfRangeException("length");
-            }
-
-            if (length < 1)
-            {
-                throw new ArgumentOutOfRangeException("length", Resources.ArgumentMustBePositive);
-            }
-
-            if (result.Count < length)
-            {
-                throw new ArgumentOutOfRangeException("result", Resources.ArgumentVectorsSameLength);
-            }
-
-            // Clear the result and copy the diagonal entry.
-            result.Clear();
-            if (columnIndex >= rowIndex && columnIndex < rowIndex + length && columnIndex < _data.Length)
-            {
-                result[columnIndex - rowIndex] = _data[columnIndex];
-            }
-        }
-
-        /// <summary>
-        /// Copies the requested row elements into a new <see cref="Vector{T}"/>.
-        /// </summary>
-        /// <param name="rowIndex">The row to copy elements from.</param>
-        /// <param name="columnIndex">The column to start copying from.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="result">The <see cref="Vector{T}"/> to copy the column into.</param>
-        /// <exception cref="ArgumentNullException">If the result <see cref="Vector{T}"/> is <see langword="null" />.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="rowIndex"/> is negative,
-        /// or greater than or equal to the number of columns.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> is negative,
-        /// or greater than or equal to the number of rows.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> + <paramref name="length"/>  
-        /// is greater than or equal to the number of rows.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="length"/> is not positive.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <strong>result.Count &lt; length</strong>.</exception>
-        public override void Row(int rowIndex, int columnIndex, int length, Vector<float> result)
-        {
-            if (result == null)
-            {
-                throw new ArgumentNullException("result");
-            }
-
-            if (rowIndex >= RowCount || rowIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("rowIndex");
-            }
-
-            if (columnIndex >= ColumnCount || columnIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("columnIndex");
-            }
-
-            if (columnIndex + length > ColumnCount)
-            {
-                throw new ArgumentOutOfRangeException("length");
-            }
-
-            if (length < 1)
-            {
-                throw new ArgumentOutOfRangeException("length", Resources.ArgumentMustBePositive);
-            }
-
-            if (result.Count < length)
-            {
-                throw new ArgumentOutOfRangeException("result", Resources.ArgumentVectorsSameLength);
-            }
-
-            // Clear the result and copy the diagonal entry.
-            result.Clear();
-            if (rowIndex >= columnIndex && rowIndex < columnIndex + length && rowIndex < _data.Length)
-            {
-                result[rowIndex - columnIndex] = _data[rowIndex];
-            }
-        }
-
         /// <summary>Calculates the L1 norm.</summary>
         /// <returns>The L1 norm of the matrix.</returns>
         public override float L1Norm()
@@ -1020,21 +911,6 @@ namespace MathNet.Numerics.LinearAlgebra.Single
 
             Storage.CopySubMatrixTo(target.Storage, rowIndex, 0, rowCount, columnIndex, 0, columnCount, skipClearing: true);
             return target;
-        }
-
-        /// <summary>
-        /// Returns this matrix as a multidimensional array.
-        /// </summary>
-        /// <returns>A multidimensional containing the values of this matrix.</returns>    
-        public override float[,] ToArray()
-        {
-            var result = new float[RowCount, ColumnCount];
-            for (var i = 0; i < _data.Length; i++)
-            {
-                result[i, i] = _data[i];
-            }
-
-            return result;
         }
 
         /// <summary>

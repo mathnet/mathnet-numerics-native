@@ -56,7 +56,10 @@ namespace MathNet.Numerics.LinearAlgebra.Complex32
             get { return _storage.ValueCount; }
         }
 
-        internal SparseMatrix(SparseCompressedRowMatrixStorage<Complex32> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SparseMatrix"/> class.
+        /// </summary>
+        public SparseMatrix(SparseCompressedRowMatrixStorage<Complex32> storage)
             : base(storage)
         {
             _storage = storage;
@@ -180,7 +183,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex32
         public SparseMatrix(Matrix<Complex32> matrix)
             : this(matrix.RowCount, matrix.ColumnCount)
         {
-            matrix.Storage.CopyTo(Storage, skipClearing: true);
+            matrix.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>
@@ -481,31 +484,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex32
         }
 
         /// <summary>
-        /// Returns the matrix's elements as an array with the data laid out column-wise.
-        /// </summary>
-        /// <example><pre>
-        /// 1, 2, 3
-        /// 4, 5, 6  will be returned as  1, 4, 7, 2, 5, 8, 3, 6, 9
-        /// 7, 8, 9
-        /// </pre></example>
-        /// <returns>An array containing the matrix's elements.</returns>
-        public override Complex32[] ToColumnWiseArray()
-        {
-            var values = _storage.Values;
-            var ret = new Complex32[RowCount * ColumnCount];
-            for (var j = 0; j < ColumnCount; j++)
-            {
-                for (var i = 0; i < RowCount; i++)
-                {
-                    var index = _storage.FindItem(i, j);
-                    ret[(j * RowCount) + i] = index >= 0 ? values[index] : 0.0f;
-                }
-            }
-
-            return ret;
-        }
-
-        /// <summary>
         /// Returns the transpose of this matrix.
         /// </summary>        
         /// <returns>The transpose of this matrix.</returns>
@@ -610,78 +588,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex32
             }
 
             return norm;
-        }
-
-        /// <summary>
-        /// Copies the requested row elements into a new <see cref="Vector{T}"/>.
-        /// </summary>
-        /// <param name="rowIndex">The row to copy elements from.</param>
-        /// <param name="columnIndex">The column to start copying from.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <param name="result">The <see cref="Vector{T}"/> to copy the column into.</param>
-        /// <exception cref="ArgumentNullException">If the result <see cref="Vector{T}"/> is <see langword="null" />.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="rowIndex"/> is negative,
-        /// or greater than or equal to the number of columns.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> is negative,
-        /// or greater than or equal to the number of rows.</exception>        
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> + <paramref name="length"/>  
-        /// is greater than or equal to the number of rows.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="length"/> is not positive.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <strong>result.Count &lt; length</strong>.</exception>
-        public override void Row(int rowIndex, int columnIndex, int length, Vector<Complex32> result)
-        {
-            if (result == null)
-            {
-                throw new ArgumentNullException("result");
-            }
-
-            if (rowIndex >= RowCount || rowIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("rowIndex");
-            }
-
-            if (columnIndex >= ColumnCount || columnIndex < 0)
-            {
-                throw new ArgumentOutOfRangeException("columnIndex");
-            }
-
-            if (columnIndex + length > ColumnCount)
-            {
-                throw new ArgumentOutOfRangeException("length");
-            }
-
-            if (length < 1)
-            {
-                throw new ArgumentOutOfRangeException("length", Resources.ArgumentMustBePositive);
-            }
-
-            if (result.Count < length)
-            {
-                throw new ArgumentOutOfRangeException("result", Resources.ArgumentVectorsSameLength);
-            }
-
-            var rowPointers = _storage.RowPointers;
-            var values = _storage.Values;
-            var valueCount = _storage.ValueCount;
-
-            // Determine bounds in columnIndices array where this item should be searched (using rowIndex)
-            var startIndex = rowPointers[rowIndex];
-            var endIndex = rowIndex < rowPointers.Length - 1 ? rowPointers[rowIndex + 1] : valueCount;
-
-            if (startIndex == endIndex)
-            {
-                result.Clear();
-            }
-            else
-            {
-                // If there are non-zero elements use base class implementation
-                for (int i = columnIndex, j = 0; i < columnIndex + length; i++, j++)
-                {
-                    // Copy code from At(row, column) to avoid unnecessary lock
-                    var index = _storage.FindItem(rowIndex, i);
-                    result[j] = index >= 0 ? values[index] : Complex32.Zero;
-                }
-            }
         }
 
         #region Static constructors for special matrices.

@@ -49,7 +49,19 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
     {
         readonly SparseVectorStorage<Complex> _storage;
 
-        internal SparseVector(SparseVectorStorage<Complex> storage)
+        /// <summary>
+        /// Gets the number of non zero elements in the vector.
+        /// </summary>
+        /// <value>The number of non zero elements.</value>
+        public int NonZerosCount
+        {
+            get { return _storage.ValueCount; }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SparseVector"/> class.
+        /// </summary>
+        public SparseVector(SparseVectorStorage<Complex> storage)
             : base(storage)
         {
             _storage = storage;
@@ -114,7 +126,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         public SparseVector(Vector<Complex> other)
             : this(new SparseVectorStorage<Complex>(other.Count))
         {
-            other.Storage.CopyTo(Storage, skipClearing: true);
+            other.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>

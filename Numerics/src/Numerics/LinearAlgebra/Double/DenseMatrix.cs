@@ -60,7 +60,10 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         /// <value>The matrix's data.</value>
         readonly double[] _values;
 
-        internal DenseMatrix(DenseColumnMajorMatrixStorage<double> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DenseMatrix"/> class.
+        /// </summary>
+        public DenseMatrix(DenseColumnMajorMatrixStorage<double> storage)
             : base(storage)
         {
             _rowCount = storage.RowCount;
@@ -150,7 +153,7 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         public DenseMatrix(Matrix<double> matrix)
             : this(matrix.RowCount, matrix.ColumnCount)
         {
-            matrix.Storage.CopyTo(Storage, skipClearing: true);
+            matrix.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>

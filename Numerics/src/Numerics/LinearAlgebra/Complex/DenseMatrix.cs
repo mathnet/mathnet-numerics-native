@@ -60,7 +60,10 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         /// <value>The matrix's data.</value>
         readonly Complex[] _values;
 
-        internal DenseMatrix(DenseColumnMajorMatrixStorage<Complex> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DenseMatrix"/> class.
+        /// </summary>
+        public DenseMatrix(DenseColumnMajorMatrixStorage<Complex> storage)
             : base(storage)
         {
             _rowCount = storage.RowCount;
@@ -150,7 +153,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         public DenseMatrix(Matrix<Complex> matrix)
             : this(matrix.RowCount, matrix.ColumnCount)
         {
-            matrix.Storage.CopyTo(Storage, skipClearing: true);
+            matrix.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>

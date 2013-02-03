@@ -195,8 +195,28 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             return hash;
         }
 
-        /// <remarks>Parameters assumed to be validated already.</remarks>
-        public virtual void CopyTo(MatrixStorage<T> target, bool skipClearing = false)
+        public void CopyTo(MatrixStorage<T> target, bool skipClearing = false)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException("target");
+            }
+
+            if (ReferenceEquals(this, target))
+            {
+                return;
+            }
+
+            if (RowCount != target.RowCount || ColumnCount != target.ColumnCount)
+            {
+                var message = string.Format(Resources.ArgumentMatrixDimensions2, RowCount + "x" + ColumnCount, target.RowCount + "x" + target.ColumnCount);
+                throw new ArgumentException(message, "target");
+            }
+
+            CopyToUnchecked(target, skipClearing);
+        }
+
+        internal virtual void CopyToUnchecked(MatrixStorage<T> target, bool skipClearing = false)
         {
             for (int j = 0; j < ColumnCount; j++)
             {
@@ -207,7 +227,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        public virtual void CopySubMatrixTo(MatrixStorage<T> target,
+        public void CopySubMatrixTo(MatrixStorage<T> target,
             int sourceRowIndex, int targetRowIndex, int rowCount,
             int sourceColumnIndex, int targetColumnIndex, int columnCount,
             bool skipClearing = false)
@@ -226,6 +246,15 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                 sourceRowIndex, targetRowIndex, rowCount,
                 sourceColumnIndex, targetColumnIndex, columnCount);
 
+            CopySubMatrixToUnchecked(target, sourceRowIndex, targetRowIndex, rowCount,
+                sourceColumnIndex, targetColumnIndex, columnCount, skipClearing);
+        }
+
+        internal virtual void CopySubMatrixToUnchecked(MatrixStorage<T> target,
+            int sourceRowIndex, int targetRowIndex, int rowCount,
+            int sourceColumnIndex, int targetColumnIndex, int columnCount,
+            bool skipClearing = false)
+        {
             for (int j = sourceColumnIndex, jj = targetColumnIndex; j < sourceColumnIndex + columnCount; j++, jj++)
             {
                 for (int i = sourceRowIndex, ii = targetRowIndex; i < sourceRowIndex + rowCount; i++, ii++)
@@ -233,6 +262,95 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                     target.At(ii, jj, At(i, j));
                 }
             }
+        }
+
+        public void CopySubRowTo(VectorStorage<T> target, int rowIndex,
+            int sourceColumnIndex, int targetColumnIndex, int columnCount,
+            bool skipClearing = false)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException("target");
+            }
+
+            ValidateSubRowRange(target, rowIndex, sourceColumnIndex, targetColumnIndex, columnCount);
+
+            CopySubRowToUnchecked(target, rowIndex, sourceColumnIndex, targetColumnIndex, columnCount, skipClearing);
+        }
+
+        internal virtual void CopySubRowToUnchecked(VectorStorage<T> target, int rowIndex,
+            int sourceColumnIndex, int targetColumnIndex, int columnCount,
+            bool skipClearing = false)
+        {
+            for (int j = sourceColumnIndex, jj = targetColumnIndex; j < sourceColumnIndex + columnCount; j++, jj++)
+            {
+                target.At(jj, At(rowIndex, j));
+            }
+        }
+
+        public void CopySubColumnTo(VectorStorage<T> target, int columnIndex,
+            int sourceRowIndex, int targetRowIndex, int rowCount,
+            bool skipClearing = false)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException("target");
+            }
+
+            ValidateSubColumnRange(target, columnIndex, sourceRowIndex, targetRowIndex, rowCount);
+
+            CopySubColumnToUnchecked(target, columnIndex, sourceRowIndex, targetRowIndex, rowCount, skipClearing);
+        }
+
+        internal virtual void CopySubColumnToUnchecked(VectorStorage<T> target, int columnIndex,
+            int sourceRowIndex, int targetRowIndex, int rowCount,
+            bool skipClearing = false)
+        {
+            for (int i = sourceRowIndex, ii = targetRowIndex; i < sourceRowIndex + rowCount; i++, ii++)
+            {
+                target.At(ii, At(i, columnIndex));
+            }
+        }
+
+        public virtual T[] ToRowMajorArray()
+        {
+            var ret = new T[RowCount * ColumnCount];
+            for (int i = 0; i < RowCount; i++)
+            {
+                var offset = i * ColumnCount;
+                for (int j = 0; j < ColumnCount; j++)
+                {
+                    ret[offset + j] = At(i, j);
+                }
+            }
+            return ret;
+        }
+
+        public virtual T[] ToColumnMajorArray()
+        {
+            var ret = new T[RowCount * ColumnCount];
+            for (int j = 0; j < ColumnCount; j++)
+            {
+                var offset = j * RowCount;
+                for (int i = 0; i < RowCount; i++)
+                {
+                    ret[offset + i] = At(i, j);
+                }
+            }
+            return ret;
+        }
+
+        public virtual T[,] ToArray()
+        {
+            var ret = new T[RowCount,ColumnCount];
+            for (int i = 0; i < RowCount; i++)
+            {
+                for (int j = 0; j < ColumnCount; j++)
+                {
+                    ret[i, j] = At(i, j);
+                }
+            }
+            return ret;
         }
     }
 }

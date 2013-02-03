@@ -338,20 +338,19 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             return hash;
         }
 
-        /// <remarks>Parameters assumed to be validated already.</remarks>
-        public override void CopyTo(MatrixStorage<T> target, bool skipClearing = false)
+        internal override void CopyToUnchecked(MatrixStorage<T> target, bool skipClearing = false)
         {
             var sparseTarget = target as SparseCompressedRowMatrixStorage<T>;
             if (sparseTarget != null)
             {
-                CopyTo(sparseTarget);
+                CopyToUnchecked(sparseTarget);
                 return;
             }
 
             var denseTarget = target as DenseColumnMajorMatrixStorage<T>;
             if (denseTarget != null)
             {
-                CopyTo(denseTarget, skipClearing);
+                CopyToUnchecked(denseTarget, skipClearing);
                 return;
             }
 
@@ -376,19 +375,8 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        void CopyTo(SparseCompressedRowMatrixStorage<T> target)
+        void CopyToUnchecked(SparseCompressedRowMatrixStorage<T> target)
         {
-            if (ReferenceEquals(this, target))
-            {
-                return;
-            }
-
-            if (RowCount != target.RowCount || ColumnCount != target.ColumnCount)
-            {
-                var message = string.Format(Resources.ArgumentMatrixDimensions2, RowCount + "x" + ColumnCount, target.RowCount + "x" + target.ColumnCount);
-                throw new ArgumentException(message, "target");
-            }
-
             target.ValueCount = ValueCount;
             target.Values = new T[ValueCount];
             target.ColumnIndices = new int[ValueCount];
@@ -401,14 +389,8 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        void CopyTo(DenseColumnMajorMatrixStorage<T> target, bool skipClearing)
+        void CopyToUnchecked(DenseColumnMajorMatrixStorage<T> target, bool skipClearing)
         {
-            if (RowCount != target.RowCount || ColumnCount != target.ColumnCount)
-            {
-                var message = string.Format(Resources.ArgumentMatrixDimensions2, RowCount + "x" + ColumnCount, target.RowCount + "x" + target.ColumnCount);
-                throw new ArgumentException(message, "target");
-            }
-
             if (!skipClearing)
             {
                 target.Clear();
@@ -428,7 +410,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        public override void CopySubMatrixTo(MatrixStorage<T> target,
+        internal override void CopySubMatrixToUnchecked(MatrixStorage<T> target,
             int sourceRowIndex, int targetRowIndex, int rowCount,
             int sourceColumnIndex, int targetColumnIndex, int columnCount,
             bool skipClearing = false)
@@ -441,7 +423,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             var sparseTarget = target as SparseCompressedRowMatrixStorage<T>;
             if (sparseTarget != null)
             {
-                CopySubMatrixTo(sparseTarget, 
+                CopySubMatrixToUnchecked(sparseTarget, 
                     sourceRowIndex, targetRowIndex, rowCount,
                     sourceColumnIndex, targetColumnIndex, columnCount,
                     skipClearing);
@@ -449,15 +431,6 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
 
             // FALL BACK
-
-            if (ReferenceEquals(this, target))
-            {
-                throw new NotSupportedException();
-            }
-
-            ValidateSubMatrixRange(target,
-                sourceRowIndex, targetRowIndex, rowCount,
-                sourceColumnIndex, targetColumnIndex, columnCount);
 
             if (!skipClearing)
             {
@@ -481,20 +454,11 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        void CopySubMatrixTo(SparseCompressedRowMatrixStorage<T> target,
+        void CopySubMatrixToUnchecked(SparseCompressedRowMatrixStorage<T> target,
             int sourceRowIndex, int targetRowIndex, int rowCount,
             int sourceColumnIndex, int targetColumnIndex, int columnCount,
             bool skipClearing)
         {
-            if (ReferenceEquals(this, target))
-            {
-                throw new NotSupportedException();
-            }
-
-            ValidateSubMatrixRange(target,
-                sourceRowIndex, targetRowIndex, rowCount,
-                sourceColumnIndex, targetColumnIndex, columnCount);
-
             var rowOffset = targetRowIndex - sourceRowIndex;
             var columnOffset = targetColumnIndex - sourceColumnIndex;
 
@@ -559,6 +523,87 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                     }
                 }
             }
+        }
+
+        internal override void CopySubRowToUnchecked(VectorStorage<T> target, int rowIndex,
+            int sourceColumnIndex, int targetColumnIndex, int columnCount,
+            bool skipClearing = false)
+        {
+            if (!skipClearing)
+            {
+                target.Clear(targetColumnIndex, columnCount);
+            }
+
+            // Determine bounds in columnIndices array where this item should be searched (using rowIndex)
+            var startIndex = RowPointers[rowIndex];
+            var endIndex = rowIndex < RowPointers.Length - 1 ? RowPointers[rowIndex + 1] : ValueCount;
+
+            if (startIndex == endIndex)
+            {
+                return;
+            }
+
+            // If there are non-zero elements use base class implementation
+            for (int i = sourceColumnIndex, j = 0; i < sourceColumnIndex + columnCount; i++, j++)
+            {
+                var index = FindItem(rowIndex, i);
+                target.At(j, index >= 0 ? Values[index] : _zero);
+            }
+        }
+
+        public override T[] ToRowMajorArray()
+        {
+            var ret = new T[RowCount * ColumnCount];
+            if (ValueCount != 0)
+            {
+                for (int row = 0; row < RowCount; row++)
+                {
+                    var offset = row * ColumnCount;
+                    var startIndex = RowPointers[row];
+                    var endIndex = row < RowPointers.Length - 1 ? RowPointers[row + 1] : ValueCount;
+                    for (var j = startIndex; j < endIndex; j++)
+                    {
+                        ret[offset + ColumnIndices[j]] = Values[j];
+                    }
+                }
+            }
+            return ret;
+        }
+
+        public override T[] ToColumnMajorArray()
+        {
+            var ret = new T[RowCount * ColumnCount];
+            if (ValueCount != 0)
+            {
+                for (int row = 0; row < RowCount; row++)
+                {
+                    var startIndex = RowPointers[row];
+                    var endIndex = row < RowPointers.Length - 1 ? RowPointers[row + 1] : ValueCount;
+                    for (var j = startIndex; j < endIndex; j++)
+                    {
+                        ret[(ColumnIndices[j]) * RowCount + row] = Values[j];
+                    }
+                }
+            }
+            return ret;
+        }
+
+        public override T[,] ToArray()
+        {
+            var ret = new T[RowCount, ColumnCount];
+            if (ValueCount != 0)
+            {
+                for (int row = 0; row < RowCount; row++)
+                {
+                    var startIndex = RowPointers[row];
+                    var endIndex = row < RowPointers.Length - 1 ? RowPointers[row + 1] : ValueCount;
+                    for (var j = startIndex; j < endIndex; j++)
+                    {
+                        ret[row, ColumnIndices[j]] = Values[j];
+                    }
+                }
+            }
+            return ret;
         }
     }
 }

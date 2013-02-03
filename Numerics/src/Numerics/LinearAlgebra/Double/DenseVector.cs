@@ -53,7 +53,10 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         /// </summary>
         readonly double[] _values;
 
-        internal DenseVector(DenseVectorStorage<double> storage)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DenseVector"/> class.
+        /// </summary>
+        public DenseVector(DenseVectorStorage<double> storage)
             : base(storage)
         {
             _length = storage.Length;
@@ -106,7 +109,7 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         public DenseVector(Vector<double> other)
             : this(other.Count)
         {
-            other.Storage.CopyTo(Storage, skipClearing: true);
+            other.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>
