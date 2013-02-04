@@ -11,7 +11,7 @@
         <iconUrl>http://www.mathdotnet.com/images/MathNet128.png</iconUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>MKL native libraries for Math.NET Numerics.</description>
-        <tags>math numeric statistics probability integration interpolation linear algebra matrix fft native mkl x68</tags>
+        <tags>math numeric statistics probability integration interpolation linear algebra matrix fft native mkl x86</tags>
         <dependencies>
             <dependency id="MathNet.Numerics" version="2.4.0" />
         </dependencies>
