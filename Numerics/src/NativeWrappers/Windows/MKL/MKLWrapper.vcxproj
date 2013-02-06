@@ -293,9 +293,6 @@
     <ClCompile Include="..\..\MKL\vector_functions.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Common\wrapper_common.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="..\..\Common\resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
