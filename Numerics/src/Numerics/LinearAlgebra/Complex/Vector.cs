@@ -3,7 +3,9 @@
 // http://numerics.mathdotnet.com
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
-// Copyright (c) 2009-2010 Math.NET
+//
+// Copyright (c) 2009-2013 Math.NET
+//
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
 // files (the "Software"), to deal in the Software without
@@ -12,8 +14,10 @@
 // copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following
 // conditions:
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 // OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -28,9 +32,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
 {
     using System;
     using System.Numerics;
-    using Distributions;
     using Generic;
-    using Properties;
     using Storage;
     using Threading;
 
@@ -198,7 +200,7 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         /// <param name="result">A vector to store the results in.</param>
         protected override void DoModulus(Complex divisor, Vector<Complex> result)
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException();
         }
 
         /// <summary>
@@ -325,36 +327,27 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
-        /// Conjugates vector and save result to <paramref name="target"/>
+        /// Conjugates vector and save result to <paramref name="result"/>
         /// </summary>
-        /// <param name="target">Target vector</param>
-        protected override void DoConjugate(Vector<Complex> target)
+        /// <param name="result">Target vector</param>
+        protected override void DoConjugate(Vector<Complex> result)
         {
             for (var index = 0; index < Count; index++)
             {
-                target.At(index, At(index).Conjugate());
+                result.At(index, At(index).Conjugate());
             }
         }
 
         /// <summary>
-        /// Returns a negated vector.
+        /// Negates vector and saves result to <paramref name="result"/>
         /// </summary>
-        /// <returns>
-        /// The negated vector.
-        /// </returns>
-        /// <remarks>
-        /// Added as an alternative to the unary negation operator.
-        /// </remarks>
-        public override Vector<Complex> Negate()
+        /// <param name="result">Target vector</param>
+        protected override void DoNegate(Vector<Complex> result)
         {
-            var result = CreateVector(Count);
-
             for (var index = 0; index < Count; index++)
             {
                 result.At(index, -At(index));
             }
-
-            return result;
         }
 
         /// <summary>

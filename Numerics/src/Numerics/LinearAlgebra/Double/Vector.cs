@@ -3,7 +3,9 @@
 // http://numerics.mathdotnet.com
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
-// Copyright (c) 2009-2010 Math.NET
+//
+// Copyright (c) 2009-2013 Math.NET
+//
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
 // files (the "Software"), to deal in the Software without
@@ -12,8 +14,10 @@
 // copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following
 // conditions:
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 // OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -27,9 +31,7 @@
 namespace MathNet.Numerics.LinearAlgebra.Double
 {
     using System;
-    using Distributions;
     using Generic;
-    using Properties;
     using Storage;
     using Threading;
 
@@ -197,9 +199,9 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         /// <param name="result">A vector to store the results in.</param>
         protected override void DoModulus(double divisor, Vector<double> result)
         {
-            for (var index = 0; index < Count; index++)
+            for (int i = 0; i < Count; i++)
             {
-                result[index] = At(index) % divisor;
+                result.At(i, At(i)%divisor);
             }
         }
 
@@ -327,38 +329,29 @@ namespace MathNet.Numerics.LinearAlgebra.Double
         }
 
         /// <summary>
-        /// Conjugates vector and save result to <paramref name="target"/>
+        /// Conjugates vector and save result to <paramref name="result"/>
         /// </summary>
-        /// <param name="target">Target vector</param>
-        protected override void DoConjugate(Vector<double> target)
+        /// <param name="result">Target vector</param>
+        protected override void DoConjugate(Vector<double> result)
         {
-            if (ReferenceEquals(this, target))
+            if (ReferenceEquals(this, result))
             {
                 return;
             }
 
-            CopyTo(target);
+            CopyTo(result);
         }
 
         /// <summary>
-        /// Returns a negated vector.
+        /// Negates vector and saves result to <paramref name="result"/>
         /// </summary>
-        /// <returns>
-        /// The negated vector.
-        /// </returns>
-        /// <remarks>
-        /// Added as an alternative to the unary negation operator.
-        /// </remarks>
-        public override Vector<double> Negate()
+        /// <param name="result">Target vector</param>
+        protected override void DoNegate(Vector<double> result)
         {
-            var result = CreateVector(Count);
-
             for (var index = 0; index < Count; index++)
             {
                 result.At(index, -At(index));
             }
-
-            return result;
         }
 
         /// <summary>

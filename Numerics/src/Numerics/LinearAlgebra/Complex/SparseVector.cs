@@ -4,7 +4,7 @@
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
 //
-// Copyright (c) 2009-2011 Math.NET
+// Copyright (c) 2009-2013 Math.NET
 //
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
@@ -30,21 +30,21 @@
 
 namespace MathNet.Numerics.LinearAlgebra.Complex
 {
+    using Generic;
+    using Storage;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Numerics;
-    using Generic;
-    using NumberTheory;
-    using Properties;
-    using Storage;
     using Threading;
 
     /// <summary>
-    /// A vector with sparse storage.
+    /// A vector with sparse storage, intended for very large vectors where most of the cells are zero.
     /// </summary>
     /// <remarks>The sparse vector is not thread safe.</remarks>
     [Serializable]
+    [DebuggerDisplay("SparseVector {Count}-Complex {NonZerosCount}-NonZero")]
     public class SparseVector : Vector
     {
         readonly SparseVectorStorage<Complex> _storage;
@@ -59,7 +59,10 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparseVector"/> class.
+        /// Create a new sparse vector straight from an initialized vector storage instance.
+        /// The storage is used directly without copying.
+        /// Intended for advanced scenarios where you're working directly with
+        /// storage for performance or interop reasons.
         /// </summary>
         public SparseVector(SparseVectorStorage<Complex> storage)
             : base(storage)
@@ -67,112 +70,88 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
             _storage = storage;
         }
 
-        #region Constructors
-
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparseVector"/> class with a given size.
+        /// Create a new sparse vector with the given length.
+        /// All cells of the vector will be initialized to zero.
+        /// Zero-length vectors are not supported.
         /// </summary>
-        /// <param name="size">
-        /// the size of the vector.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// If <paramref name="size"/> is less than one.
-        /// </exception>
-        public SparseVector(int size)
-            : this(new SparseVectorStorage<Complex>(size))
+        /// <exception cref="ArgumentException">If length is less than one.</exception>
+        public SparseVector(int length)
+            : this(new SparseVectorStorage<Complex>(length))
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparseVector"/> class with a given size
-        /// and each element set to the given value;
+        /// Create a new sparse vector as a copy of the given other vector.
+        /// This new vector will be independent from the other vector.
+        /// A new memory block will be allocated for storing the vector.
         /// </summary>
-        /// <param name="size">
-        /// the size of the vector.
-        /// </param>
-        /// <param name="value">
-        /// the value to set each element to.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// If <paramref name="size"/> is less than one.
-        /// </exception>
-        [Obsolete("Use a dense vector instead.")]
-        public SparseVector(int size, Complex value)
-            : this(new SparseVectorStorage<Complex>(size))
+        public static SparseVector OfVector(Vector<Complex> vector)
         {
-            if (value == Complex.Zero)
-            {
-                return;
-            }
-
-            var valueCount = _storage.ValueCount = size;
-            var indices = _storage.Indices = new int[valueCount];
-            var values = _storage.Values = new Complex[valueCount];
-
-            for (int i = 0; i < values.Length; i++)
-            {
-                values[i] = value;
-                indices[i] = i;
-            }
+            return new SparseVector(SparseVectorStorage<Complex>.OfVector(vector.Storage));
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparseVector"/> class by
-        /// copying the values from another.
+        /// Create a new sparse vector as a copy of the given enumerable.
+        /// This new vector will be independent from the enumerable.
+        /// A new memory block will be allocated for storing the vector.
         /// </summary>
-        /// <param name="other">
-        /// The vector to create the new vector from.
-        /// </param>
+        public static SparseVector OfEnumerable(IEnumerable<Complex> enumerable)
+        {
+            return new SparseVector(SparseVectorStorage<Complex>.OfEnumerable(enumerable));
+        }
+
+        /// <summary>
+        /// Create a new sparse vector as a copy of the given indexed enumerable.
+        /// Keys must be provided at most once, zero is assumed if a key is omitted.
+        /// This new vector will be independent from the enumerable.
+        /// A new memory block will be allocated for storing the vector.
+        /// </summary>
+        public static SparseVector OfIndexedEnumerable(int length, IEnumerable<Tuple<int, Complex>> enumerable)
+        {
+            return new SparseVector(SparseVectorStorage<Complex>.OfIndexedEnumerable(length, enumerable));
+        }
+
+        /// <summary>
+        /// Create a new sparse vector and initialize each value using the provided init function.
+        /// </summary>
+        public static SparseVector Create(int length, Func<int, Complex> init)
+        {
+            return new SparseVector(SparseVectorStorage<Complex>.OfInit(length, init));
+        }
+
+        /// <summary>
+        /// Create a new sparse vector with the given length.
+        /// All cells of the vector will be initialized with the provided value.
+        /// Zero-length vectors are not supported.
+        /// </summary>
+        /// <exception cref="ArgumentException">If length is less than one.</exception>
+        [Obsolete("Use a dense vector instead. Scheduled for removal in v3.0.")]
+        public SparseVector(int length, Complex value)
+            : this(SparseVectorStorage<Complex>.OfInit(length, i => value))
+        {
+        }
+
+        /// <summary>
+        /// Create a new sparse vector as a copy of the given other vector.
+        /// This new vector will be independent from the other vector.
+        /// A new memory block will be allocated for storing the vector.
+        /// </summary>
+        [Obsolete("Use SparseVector.OfVector instead. Scheduled for removal in v3.0.")]
         public SparseVector(Vector<Complex> other)
-            : this(new SparseVectorStorage<Complex>(other.Count))
+            : this(SparseVectorStorage<Complex>.OfVector(other.Storage))
         {
-            other.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SparseVector"/> class for an array.
+        /// Create a new sparse vector as a copy of the given enumerable.
+        /// This new vector will be independent from the enumerable.
+        /// A new memory block will be allocated for storing the vector.
         /// </summary>
-        /// <param name="array">The array to create this vector from.</param>
-        /// <remarks>The vector copy the array. Any changes to the vector will NOT change the array.</remarks>
-        public SparseVector(IList<Complex> array)
-            : this(new SparseVectorStorage<Complex>(array.Count))
+        [Obsolete("Use SparseVector.OfEnumerable instead. Scheduled for removal in v3.0.")]
+        public SparseVector(IEnumerable<Complex> other)
+            : this(SparseVectorStorage<Complex>.OfEnumerable(other))
         {
-            for (var i = 0; i < array.Count; i++)
-            {
-                Storage.At(i, array[i]);
-            }
-        }
-
-        #endregion
-
-        /// <summary>
-        /// Create a matrix based on this vector in column form (one single column).
-        /// </summary>
-        /// <returns>This vector as a column matrix.</returns>
-        public override Matrix<Complex> ToColumnMatrix()
-        {
-            var matrix = new SparseMatrix(Count, 1);
-            for (var i = 0; i < _storage.ValueCount; i++)
-            {
-                matrix.At(_storage.Indices[i], 0, _storage.Values[i]);
-            }
-
-            return matrix;
-        }
-
-        /// <summary>
-        /// Create a matrix based on this vector in row form (one single row).
-        /// </summary>
-        /// <returns>This vector as a row matrix.</returns>
-        public override Matrix<Complex> ToRowMatrix()
-        {
-            var matrix = new SparseMatrix(1, Count);
-            for (var i = 0; i < _storage.ValueCount; i++)
-            {
-                matrix.At(0, _storage.Indices[i], _storage.Values[i]);
-            }
-
-            return matrix;
         }
 
         /// <summary>
@@ -209,49 +188,42 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
-        /// Conjugates vector and save result to <paramref name="target"/>
+        /// Conjugates vector and save result to <paramref name="result"/>
         /// </summary>
-        /// <param name="target">Target vector</param>
-        public override void Conjugate(Vector<Complex> target)
+        /// <param name="result">Target vector</param>
+        protected override void DoConjugate(Vector<Complex> result)
         {
-            if (target == null)
-            {
-                throw new ArgumentNullException("target");
-            }
-
-            if (Count != target.Count)
-            {
-                throw new ArgumentException(Resources.ArgumentVectorsSameLength, "target");
-            }
-
-            if (ReferenceEquals(this, target))
+            if (ReferenceEquals(this, result))
             {
                 var tmp = CreateVector(Count);
-                Conjugate(tmp);
-                tmp.CopyTo(target);
+                DoConjugate(tmp);
+                tmp.CopyTo(result);
             }
 
-            var otherVector = target as SparseVector;
-            if (otherVector == null)
+            var targetSparse = result as SparseVector;
+            if (targetSparse == null)
             {
-                base.Conjugate(target);
+                base.DoConjugate(result);
+                return;
             }
-            else
-            {
-                // Lets copy only needed data. Portion of needed data is determined by NonZerosCount value
-                otherVector._storage.Values = new Complex[_storage.ValueCount];
-                otherVector._storage.Indices = new int[_storage.ValueCount];
-                otherVector._storage.ValueCount = _storage.ValueCount;
 
-                if (_storage.ValueCount != 0)
-                {
-                    CommonParallel.For(0, _storage.ValueCount, index => otherVector._storage.Values[index] = _storage.Values[index].Conjugate());
-                    Buffer.BlockCopy(_storage.Indices, 0, otherVector._storage.Indices, 0, _storage.ValueCount * Constants.SizeOfInt);
-                }
+            // Lets copy only needed data. Portion of needed data is determined by NonZerosCount value
+            targetSparse._storage.Values = new Complex[_storage.ValueCount];
+            targetSparse._storage.Indices = new int[_storage.ValueCount];
+            targetSparse._storage.ValueCount = _storage.ValueCount;
+
+            if (_storage.ValueCount != 0)
+            {
+                CommonParallel.For(0, _storage.ValueCount, (a, b) =>
+                    {
+                        for (int i = a; i < b; i++)
+                        {
+                            targetSparse._storage.Values[i] = _storage.Values[i].Conjugate();
+                        }
+                    });
+                Buffer.BlockCopy(_storage.Indices, 0, targetSparse._storage.Indices, 0, _storage.ValueCount*Constants.SizeOfInt);
             }
         }
-        
-        #region Operators and supplementary functions
 
         /// <summary>
         /// Adds a scalar to each element of the vector and stores the result in the result vector.
@@ -393,51 +365,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
-        /// Returns a <strong>Vector</strong> containing the same values of <paramref name="rightSide"/>. 
-        /// </summary>
-        /// <remarks>This method is included for completeness.</remarks>
-        /// <param name="rightSide">The vector to get the values from.</param>
-        /// <returns>A vector containing a the same values as <paramref name="rightSide"/>.</returns>
-        /// <exception cref="ArgumentNullException">If <paramref name="rightSide"/> is <see langword="null" />.</exception>
-        public static SparseVector operator +(SparseVector rightSide)
-        {
-            if (rightSide == null)
-            {
-                throw new ArgumentNullException("rightSide");
-            }
-
-            return (SparseVector)rightSide.Plus();
-        }
-
-        /// <summary>
-        /// Adds two <strong>Vectors</strong> together and returns the results.
-        /// </summary>
-        /// <param name="leftSide">One of the vectors to add.</param>
-        /// <param name="rightSide">The other vector to add.</param>
-        /// <returns>The result of the addition.</returns>
-        /// <exception cref="ArgumentException">If <paramref name="leftSide"/> and <paramref name="rightSide"/> are not the same size.</exception>
-        /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> or <paramref name="rightSide"/> is <see langword="null" />.</exception>
-        public static SparseVector operator +(SparseVector leftSide, SparseVector rightSide)
-        {
-            if (rightSide == null)
-            {
-                throw new ArgumentNullException("rightSide");
-            }
-
-            if (leftSide == null)
-            {
-                throw new ArgumentNullException("leftSide");
-            }
-
-            if (leftSide.Count != rightSide.Count)
-            {
-                throw new ArgumentException(Resources.ArgumentVectorsSameLength, "rightSide");
-            }
-
-            return (SparseVector)leftSide.Add(rightSide);
-        }
-
-        /// <summary>
         /// Subtracts a scalar from each element of the vector and stores the result in the result vector.
         /// </summary>
         /// <param name="scalar">
@@ -541,90 +468,33 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
-        /// Returns a <strong>Vector</strong> containing the negated values of <paramref name="rightSide"/>. 
+        /// Negates vector and saves result to <paramref name="result"/>
         /// </summary>
-        /// <param name="rightSide">The vector to get the values from.</param>
-        /// <returns>A vector containing the negated values as <paramref name="rightSide"/>.</returns>
-        /// <exception cref="ArgumentNullException">If <paramref name="rightSide"/> is <see langword="null" />.</exception>
-        public static SparseVector operator -(SparseVector rightSide)
+        /// <param name="result">Target vector</param>
+        protected override void DoNegate(Vector<Complex> result)
         {
-            if (rightSide == null)
+            var sparseResult = result as SparseVector;
+            if (sparseResult == null)
             {
-                throw new ArgumentNullException("rightSide");
+                result.Clear();
+                for (var index = 0; index < _storage.ValueCount; index++)
+                {
+                    result.At(_storage.Indices[index], -_storage.Values[index]);
+                }
             }
-
-            return (SparseVector)rightSide.Negate();
-        }
-
-        /// <summary>
-        /// Subtracts two <strong>Vectors</strong> and returns the results.
-        /// </summary>
-        /// <param name="leftSide">The vector to subtract from.</param>
-        /// <param name="rightSide">The vector to subtract.</param>
-        /// <returns>The result of the subtraction.</returns>
-        /// <exception cref="ArgumentException">If <paramref name="leftSide"/> and <paramref name="rightSide"/> are not the same size.</exception>
-        /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> or <paramref name="rightSide"/> is <see langword="null" />.</exception>
-        public static SparseVector operator -(SparseVector leftSide, SparseVector rightSide)
-        {
-            if (rightSide == null)
+            else
             {
-                throw new ArgumentNullException("rightSide");
+                if (!ReferenceEquals(this, result))
+                {
+                    sparseResult._storage.ValueCount = _storage.ValueCount;
+                    sparseResult._storage.Indices = new int[_storage.ValueCount];
+                    Buffer.BlockCopy(_storage.Indices, 0, sparseResult._storage.Indices, 0, _storage.ValueCount * Constants.SizeOfInt);
+                    sparseResult._storage.Values = new Complex[_storage.ValueCount];
+                    Array.Copy(_storage.Values, sparseResult._storage.Values, _storage.ValueCount);
+                }
+
+                Control.LinearAlgebraProvider.ScaleArray(-Complex.One, sparseResult._storage.Values, sparseResult._storage.Values);
             }
-
-            if (leftSide == null)
-            {
-                throw new ArgumentNullException("leftSide");
-            }
-
-            if (leftSide.Count != rightSide.Count)
-            {
-                throw new ArgumentException(Resources.ArgumentVectorsSameLength, "rightSide");
-            }
-
-            return (SparseVector)leftSide.Subtract(rightSide);
-        }
-
-        /// <summary>
-        /// Returns a negated vector.
-        /// </summary>
-        /// <returns>The negated vector.</returns>
-        /// <remarks>Added as an alternative to the unary negation operator.</remarks>
-        public override Vector<Complex> Negate()
-        {
-            var result = new SparseVectorStorage<Complex>(Count);
-            var valueCount = result.ValueCount = _storage.ValueCount;
-            var indices = result.Indices = new int[valueCount];
-            var values = result.Values = new Complex[valueCount];
-
-            if (valueCount != 0)
-            {
-                CommonParallel.For(0, valueCount, index => values[index] = -_storage.Values[index]);
-                Buffer.BlockCopy(_storage.Indices, 0, indices, 0, valueCount * Constants.SizeOfInt);
-            }
-
-            return new SparseVector(result);
-        }
-
-        /// <summary>
-        /// Multiplies a scalar to each element of the vector.
-        /// </summary>
-        /// <param name="scalar">The scalar to multiply.</param>
-        /// <returns>A new vector that is the multiplication of the vector and the scalar.</returns>
-        public override Vector<Complex> Multiply(Complex scalar)
-        {
-            if (scalar == Complex.One)
-            {
-                return Clone();
-            }
-
-            if (scalar == Complex.Zero)
-            {
-                return new SparseVector(Count);
-            }
-
-            var copy = new SparseVector(this);
-            Control.LinearAlgebraProvider.ScaleArray(scalar, copy._storage.Values, copy._storage.Values);
-            return copy;
         }
 
         /// <summary>
@@ -638,22 +508,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         /// </param>
         protected override void DoMultiply(Complex scalar, Vector<Complex> result)
         {
-            if (scalar == Complex.One)
-            {
-                if (!ReferenceEquals(this, result))
-                {
-                    CopyTo(result);
-                }
-
-                return;
-            }
-
-            if (scalar == Complex.Zero)
-            {
-                result.Clear();
-                return;
-            }
-
             var sparseResult = result as SparseVector;
             if (sparseResult == null)
             {
@@ -710,6 +564,58 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
 
         /// <summary>
+        /// Adds two <strong>Vectors</strong> together and returns the results.
+        /// </summary>
+        /// <param name="leftSide">One of the vectors to add.</param>
+        /// <param name="rightSide">The other vector to add.</param>
+        /// <returns>The result of the addition.</returns>
+        /// <exception cref="ArgumentException">If <paramref name="leftSide"/> and <paramref name="rightSide"/> are not the same size.</exception>
+        /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> or <paramref name="rightSide"/> is <see langword="null" />.</exception>
+        public static SparseVector operator +(SparseVector leftSide, SparseVector rightSide)
+        {
+            if (leftSide == null)
+            {
+                throw new ArgumentNullException("leftSide");
+            }
+
+            return (SparseVector)leftSide.Add(rightSide);
+        }
+
+        /// <summary>
+        /// Returns a <strong>Vector</strong> containing the negated values of <paramref name="rightSide"/>. 
+        /// </summary>
+        /// <param name="rightSide">The vector to get the values from.</param>
+        /// <returns>A vector containing the negated values as <paramref name="rightSide"/>.</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="rightSide"/> is <see langword="null" />.</exception>
+        public static SparseVector operator -(SparseVector rightSide)
+        {
+            if (rightSide == null)
+            {
+                throw new ArgumentNullException("rightSide");
+            }
+
+            return (SparseVector)rightSide.Negate();
+        }
+
+        /// <summary>
+        /// Subtracts two <strong>Vectors</strong> and returns the results.
+        /// </summary>
+        /// <param name="leftSide">The vector to subtract from.</param>
+        /// <param name="rightSide">The vector to subtract.</param>
+        /// <returns>The result of the subtraction.</returns>
+        /// <exception cref="ArgumentException">If <paramref name="leftSide"/> and <paramref name="rightSide"/> are not the same size.</exception>
+        /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> or <paramref name="rightSide"/> is <see langword="null" />.</exception>
+        public static SparseVector operator -(SparseVector leftSide, SparseVector rightSide)
+        {
+            if (leftSide == null)
+            {
+                throw new ArgumentNullException("leftSide");
+            }
+
+            return (SparseVector)leftSide.Subtract(rightSide);
+        }
+
+        /// <summary>
         /// Multiplies a vector with a complex.
         /// </summary>
         /// <param name="leftSide">The vector to scale.</param>
@@ -753,19 +659,9 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> or <paramref name="rightSide"/> is <see langword="null" />.</exception>
         public static Complex operator *(SparseVector leftSide, SparseVector rightSide)
         {
-            if (rightSide == null)
-            {
-                throw new ArgumentNullException("rightSide");
-            }
-
             if (leftSide == null)
             {
                 throw new ArgumentNullException("leftSide");
-            }
-
-            if (leftSide.Count != rightSide.Count)
-            {
-                throw new ArgumentException(Resources.ArgumentVectorsSameLength, "rightSide");
             }
 
             return leftSide.DotProduct(rightSide);
@@ -785,7 +681,24 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
                 throw new ArgumentNullException("leftSide");
             }
 
-            return (SparseVector)leftSide.Multiply(Complex.One / rightSide);
+            return (SparseVector)leftSide.Divide(rightSide);
+        }
+
+        /// <summary>
+        /// Computes the modulus of each element of the vector of the given divisor.
+        /// </summary>
+        /// <param name="leftSide">The vector whose elements we want to compute the modulus of.</param>
+        /// <param name="rightSide">The divisor to use,</param>
+        /// <returns>The result of the calculation</returns>
+        /// <exception cref="ArgumentNullException">If <paramref name="leftSide"/> is <see langword="null" />.</exception>
+        public static SparseVector operator %(SparseVector leftSide, Complex rightSide)
+        {
+            if (leftSide == null)
+            {
+                throw new ArgumentNullException("leftSide");
+            }
+
+            return (SparseVector)leftSide.Modulus(rightSide);
         }
 
         /// <summary>
@@ -813,67 +726,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
             }
 
             return _storage.Indices[index];
-        }
-
-        /// <summary>
-        /// Creates a vector containing specified elements.
-        /// </summary>
-        /// <param name="index">The first element to begin copying from.</param>
-        /// <param name="length">The number of elements to copy.</param>
-        /// <returns>A vector containing a copy of the specified elements.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"><list><item>If <paramref name="index"/> is not positive or
-        /// greater than or equal to the size of the vector.</item>
-        /// <item>If <paramref name="index"/> + <paramref name="length"/> is greater than or equal to the size of the vector.</item>
-        /// </list></exception>
-        /// <exception cref="ArgumentException">If <paramref name="length"/> is not positive.</exception>
-        public override Vector<Complex> SubVector(int index, int length)
-        {
-            if (index < 0 || index >= Count)
-            {
-                throw new ArgumentOutOfRangeException("index");
-            }
-
-            if (length <= 0)
-            {
-                throw new ArgumentOutOfRangeException("length");
-            }
-
-            if (index + length > Count)
-            {
-                throw new ArgumentOutOfRangeException("length");
-            }
-
-            var result = new SparseVector(length);
-            for (var i = index; i < index + length; i++)
-            {
-                result.At(i - index, At(i));
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Set the values of this vector to the given values.
-        /// </summary>
-        /// <param name="values">The array containing the values to use.</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="values"/> is <see langword="null" />.</exception>
-        /// <exception cref="ArgumentException">If <paramref name="values"/> is not the same size as this vector.</exception>
-        public override void SetValues(Complex[] values)
-        {
-            if (values == null)
-            {
-                throw new ArgumentNullException("values");
-            }
-
-            if (values.Length != Count)
-            {
-                throw new ArgumentException(Resources.ArgumentVectorsSameLength, "values");
-            }
-
-            for (var i = 0; i < values.Length; i++)
-            {
-                At(i, values[i]);
-            }
         }
 
         /// <summary>
@@ -1001,10 +853,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
             return OuterProduct(this, v);
         }
 
-        #endregion
-
-        #region Vector Norms
-
         /// <summary>
         /// Computes the p-Norm.
         /// </summary>
@@ -1040,8 +888,6 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
 
             return Math.Pow(sum, 1.0 / p);
         }
-
-        #endregion
 
         #region Parse Functions
 
@@ -1107,39 +953,38 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
                 value = value.Substring(1, value.Length - 2).Trim();
             }
 
-            // keywords
-            var textInfo = formatProvider.GetTextInfo();
-            var keywords = new[] { textInfo.ListSeparator };
-
-            // lexing
-            var tokens = new LinkedList<string>();
-            GlobalizationHelper.Tokenize(tokens.AddFirst(value), keywords, 0);
-            var token = tokens.First;
-
-            if (token == null || tokens.Count.IsEven())
-            {
-                throw new FormatException();
-            }
-
             // parsing
-            var data = new Complex[(tokens.Count + 1) >> 1];
-            for (var i = 0; i < data.Length; i++)
+            var strongTokens = value.Split(new[] { formatProvider.GetTextInfo().ListSeparator }, StringSplitOptions.RemoveEmptyEntries);
+            var data = new List<Complex>();
+            foreach (string strongToken in strongTokens)
             {
-                if (token == null || token.Value == textInfo.ListSeparator)
+                var weakTokens = strongToken.Split(new[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                string current = string.Empty;
+                for (int i = 0; i < weakTokens.Length; i++)
+                {
+                    current += weakTokens[i];
+                    if (current.EndsWith("+") || current.EndsWith("-") || current.StartsWith("(") && !current.EndsWith(")"))
+                    {
+                        continue;
+                    }
+                    var ahead = i < weakTokens.Length - 1 ? weakTokens[i + 1] : string.Empty;
+                    if (ahead.StartsWith("+") || ahead.StartsWith("-"))
+                    {
+                        continue;
+                    }
+                    data.Add(current.ToComplex(formatProvider));
+                    current = string.Empty;
+                }
+                if (current != string.Empty)
                 {
                     throw new FormatException();
                 }
-
-                data[i] = token.Value.ToComplex(formatProvider);
-
-                token = token.Next;
-                if (token != null)
-                {
-                    token = token.Next;
-                }
             }
-
-            return new SparseVector(data);
+            if (data.Count == 0)
+            {
+                throw new FormatException();
+            }
+            return OfEnumerable(data);
         }
 
         /// <summary>
@@ -1201,146 +1046,9 @@ namespace MathNet.Numerics.LinearAlgebra.Complex
         }
         #endregion
 
-        #region System.Object override
-
-        public override string ToString(string format, IFormatProvider formatProvider)
+        public override string ToTypeString()
         {
-            if (Count > 20)
-            {
-                return String.Format("SparseVectorOfComplex({0},{1},{2})", Count, _storage.ValueCount, GetHashCode());
-            }
-
-            return base.ToString(format, formatProvider);
-        }
-
-        /// <summary>
-        /// Returns a hash code for this instance.
-        /// </summary>
-        /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table. 
-        /// </returns>
-        public override int GetHashCode()
-        {
-            var hashNum = Math.Min(_storage.ValueCount, 20);
-            long hash = 0;
-            for (var i = 0; i < hashNum; i++)
-            {
-#if PORTABLE
-                hash ^= Precision.DoubleToInt64Bits(_storage.Values[i].GetHashCode());
-#else
-                hash ^= BitConverter.DoubleToInt64Bits(_storage.Values[i].GetHashCode());
-#endif
-            }
-
-            return BitConverter.ToInt32(BitConverter.GetBytes(hash), 4);
-        }
-
-        #endregion
-
-        /// <summary>
-        /// Indicates whether the current object is equal to another object of the same type.
-        /// </summary>
-        /// <param name="other">
-        /// An object to compare with this object.
-        /// </param>
-        /// <returns>
-        /// <c>true</c> if the current object is equal to the <paramref name="other"/> parameter; otherwise, <c>false</c>.
-        /// </returns>
-        public override bool Equals(Vector<Complex> other)
-        {
-            // Reject equality when the argument is null or has a different length.
-            if (other == null)
-            {
-                return false;
-            }
-
-            if (Count != other.Count)
-            {
-                return false;
-            }
-
-            // Accept if the argument is the same object as this.
-            if (ReferenceEquals(this, other))
-            {
-                return true;
-            }
-
-            var otherSparse = other as SparseVector;
-            if (otherSparse == null)
-            {
-                return base.Equals(other);
-            }
-
-            int i = 0, j = 0;
-            while (i < _storage.ValueCount || j < otherSparse._storage.ValueCount)
-            {
-                if (j >= otherSparse._storage.ValueCount || i < _storage.ValueCount && _storage.Indices[i] < otherSparse._storage.Indices[j])
-                {
-                    if (_storage.Values[i++] != Complex.Zero)
-                    {
-                        return false;
-                    }
-                    continue;
-                }
-
-                if (i >= _storage.ValueCount || j < otherSparse._storage.ValueCount && otherSparse._storage.Indices[j] < _storage.Indices[i])
-                {
-                    if (otherSparse._storage.Values[j++] != Complex.Zero)
-                    {
-                        return false;
-                    }
-                    continue;
-                }
-
-                if (!_storage.Values[i].AlmostEqual(otherSparse._storage.Values[j]))
-                {
-                    return false;
-                }
-
-                i++;
-                j++;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Returns an <see cref="IEnumerator{T}"/> that contains the position and value of the element.
-        /// </summary>
-        /// <returns>
-        /// An <see cref="IEnumerator{T}"/> over this vector that contains the position and value of each
-        /// element.
-        /// </returns>
-        /// <remarks>
-        /// The enumerator returns a 
-        /// <seealso cref="Tuple{T,K}"/>
-        /// with the first value being the element index and the second value 
-        /// being the value of the element at that index. For sparse vectors, the enumerator will exclude all elements
-        /// with a zero value.
-        /// </remarks>
-        public override IEnumerable<Tuple<int, Complex>> GetIndexedEnumerator()
-        {
-            for (var i = 0; i < _storage.ValueCount; i++)
-            {
-                yield return new Tuple<int, Complex>(_storage.Indices[i], _storage.Values[i]);
-            }
-        }
-
-        /// <summary>
-        /// Returns the data contained in the vector as an array.
-        /// </summary>
-        /// <returns>
-        /// The vector's data as an array.
-        /// </returns>
-        public override Complex[] ToArray()
-        {
-            var ret = new Complex[Count];
-            for (var i = 0; i < _storage.ValueCount; i++)
-            {
-                ret[_storage.Indices[i]] = _storage.Values[i];
-            }
-
-            return ret;
+            return string.Format("SparseVector {0}-Complex {1:P2} Filled", Count, NonZerosCount / (double)Count);
         }
     }
 }

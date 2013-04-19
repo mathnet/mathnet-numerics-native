@@ -61,6 +61,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <NoWarn>1591</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release-Signed|AnyCPU'">
     <OutputPath>..\..\out\lib\Net40\</OutputPath>
@@ -104,10 +105,18 @@
     <Compile Include="Constants.cs" />
     <Compile Include="Control.cs" />
     <Compile Include="Complex32.cs" />
+    <Compile Include="Financial\AbsoluteReturnMeasures.cs" />
+    <Compile Include="Financial\AbsoluteRiskMeasures.cs" />
+    <Compile Include="LinearAlgebra\Generic\Matrix.BCL.cs" />
+    <Compile Include="LinearAlgebra\Generic\Vector.BCL.cs" />
     <Compile Include="SpecialFunctions\Evaluate.cs" />
     <Compile Include="SpecialFunctions\ModifiedStruve.cs" />
     <Compile Include="SpecialFunctions\ModifiedBessel.cs" />
     <Compile Include="SpecialFunctions\Logistic.cs" />
+    <Compile Include="Statistics\ArrayStatistics.cs" />
+    <Compile Include="Statistics\QuantileDefinition.cs" />
+    <Compile Include="Statistics\StreamingStatistics.cs" />
+    <Compile Include="Statistics\SortedArrayStatistics.cs" />
     <Compile Include="TargetedPatchingOptOutAttribute.cs" />
     <Compile Include="Distributions\Continuous\Cauchy.cs" />
     <Compile Include="Distributions\Continuous\Chi.cs" />
@@ -425,10 +434,14 @@
     <Compile Include="Statistics\Correlation.cs" />
     <Compile Include="Statistics\DescriptiveStatistics.cs" />
     <Compile Include="Statistics\Histogram.cs" />
+    <Compile Include="Statistics\MCMC\HybridMC.cs" />
+    <Compile Include="Statistics\MCMC\HybridMCGeneric.cs" />
+    <Compile Include="Statistics\MCMC\MCMCDiagnostics.cs" />
     <Compile Include="Statistics\MCMC\MCMCSampler.cs" />
     <Compile Include="Statistics\MCMC\MetropolisHastingsSampler.cs" />
     <Compile Include="Statistics\MCMC\MetropolisSampler.cs" />
     <Compile Include="Statistics\MCMC\RejectionSampler.cs" />
+    <Compile Include="Statistics\MCMC\UnivariateHybridMC.cs" />
     <Compile Include="Statistics\Percentile.cs" />
     <Compile Include="Statistics\Statistics.cs" />
     <Compile Include="Statistics\MCMC\UnivariateSliceSampler.cs" />
@@ -437,7 +450,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
+      <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>

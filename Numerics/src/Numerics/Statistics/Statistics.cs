@@ -4,7 +4,7 @@
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
 //
-// Copyright (c) 2009-2010 Math.NET
+// Copyright (c) 2009-2013 Math.NET
 //
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
@@ -33,7 +33,6 @@ namespace MathNet.Numerics.Statistics
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Properties;
 
     /// <summary>
     /// Extension methods to return basic statistics on set of data.
@@ -41,552 +40,561 @@ namespace MathNet.Numerics.Statistics
     public static class Statistics
     {
         /// <summary>
-        /// Calculates the sample mean.
-        /// </summary>
-        /// <param name="data">The data to calculate the mean of.</param>
-        /// <returns>The mean of the sample.</returns>
-        public static double Mean(this IEnumerable<double> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double mean = 0;
-            ulong m = 0;
-            foreach (var item in data)
-            {
-                mean += (item - mean) / ++m;
-            }
-
-            return mean;
-        }
-
-        /// <summary>
-        /// Calculates the sample mean.
-        /// </summary>
-        /// <param name="data">The data to calculate the mean of.</param>
-        /// <returns>The mean of the sample.</returns>
-        public static double Mean(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double mean = 0;
-            ulong m = 0;
-            foreach (var item in data)
-            {
-                if (item.HasValue)
-                {
-                    mean += (item.Value - mean) / ++m;
-                }
-            }
-
-            return mean;
-        }
-
-        /// <summary>
-        /// Calculates the unbiased population variance estimator (on a dataset of size N will use an N-1 normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the variance of.</param>
-        /// <returns>The unbiased population variance of the sample.</returns>
-        public static double Variance(this IEnumerable<double> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double variance = 0;
-            double t = 0;
-            ulong j = 0;
-
-            using (IEnumerator<double> iterator = data.GetEnumerator())
-            {
-                if (iterator.MoveNext())
-                {
-                    j++;
-                    t = iterator.Current;
-                }
-
-                while (iterator.MoveNext())
-                {
-                    j++;
-                    double xi = iterator.Current;
-                    t += xi;
-                    double diff = (j * xi) - t;
-                    variance += (diff * diff) / (j * (j - 1));
-                }
-            }
-
-            return variance / (j - 1);
-        }
-
-        /// <summary>
-        /// Computes the unbiased population variance estimator (on a dataset of size N will use an N-1 normalizer) for nullable data.
-        /// </summary>
-        /// <param name="data">The data to calculate the variance of.</param>
-        /// <returns>The population variance of the sample.</returns>
-        public static double Variance(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double variance = 0;
-            double t = 0;
-            ulong j = 0;
-
-            using (IEnumerator<double?> iterator = data.GetEnumerator())
-            {
-                while (true)
-                {
-                    bool hasNext = iterator.MoveNext();
-                    if (!hasNext)
-                    {
-                        break;
-                    }
-
-                    if (iterator.Current.HasValue)
-                    {
-                        j++;
-                        t = iterator.Current.Value;
-                        break;
-                    }
-                }
-
-                while (iterator.MoveNext())
-                {
-                    if (iterator.Current.HasValue)
-                    {
-                        j++;
-                        double xi = iterator.Current.Value;
-                        t += xi;
-                        double diff = (j * xi) - t;
-                        variance += (diff * diff) / (j * (j - 1));
-                    }
-                }
-            }
-
-            return variance / (j - 1);
-        }
-
-        /// <summary>
-        /// Calculates the biased population variance estimator (on a dataset of size N will use an N normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the variance of.</param>
-        /// <returns>The biased population variance of the sample.</returns>
-        public static double PopulationVariance(this IEnumerable<double> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double variance = 0;
-            double t = 0;
-            ulong j = 0;
-
-            using (IEnumerator<double> iterator = data.GetEnumerator())
-            {
-                if (iterator.MoveNext())
-                {
-                    j++;
-                    t = iterator.Current;
-                }
-
-                while (iterator.MoveNext())
-                {
-                    j++;
-                    double xi = iterator.Current;
-                    t += xi;
-                    double diff = (j * xi) - t;
-                    variance += (diff * diff) / (j * (j - 1));
-                }
-            }
-
-            return variance / j;
-        }
-
-        /// <summary>
-        /// Computes the biased population variance estimator (on a dataset of size N will use an N normalizer) for nullable data.
-        /// </summary>
-        /// <param name="data">The data to calculate the variance of.</param>
-        /// <returns>The population variance of the sample.</returns>
-        public static double PopulationVariance(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double variance = 0;
-            double t = 0;
-            ulong j = 0;
-
-            using (IEnumerator<double?> iterator = data.GetEnumerator())
-            {
-                while (true)
-                {
-                    bool hasNext = iterator.MoveNext();
-                    if (!hasNext)
-                    {
-                        break;
-                    }
-
-                    if (iterator.Current.HasValue)
-                    {
-                        j++;
-                        t = iterator.Current.Value;
-                        break;
-                    }
-                }
-
-                while (iterator.MoveNext())
-                {
-                    if (iterator.Current.HasValue)
-                    {
-                        j++;
-                        double xi = iterator.Current.Value;
-                        t += xi;
-                        double diff = (j * xi) - t;
-                        variance += (diff * diff) / (j * (j - 1));
-                    }
-                }
-            }
-
-            return variance / j;
-        }
-
-        /// <summary>
-        /// Calculates the unbiased sample standard deviation (on a dataset of size N will use an N-1 normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the standard deviation of.</param>
-        /// <returns>The standard deviation of the sample.</returns>
-        public static double StandardDeviation(this IEnumerable<double> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            return Math.Sqrt(Variance(data));
-        }
-
-        /// <summary>
-        /// Calculates the unbiased sample standard deviation (on a dataset of size N will use an N-1 normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the standard deviation of.</param>
-        /// <returns>The standard deviation of the sample.</returns>
-        public static double StandardDeviation(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            return Math.Sqrt(Variance(data));
-        }
-
-        /// <summary>
-        /// Calculates the biased sample standard deviation (on a dataset of size N will use an N normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the standard deviation of.</param>
-        /// <returns>The standard deviation of the sample.</returns>
-        public static double PopulationStandardDeviation(this IEnumerable<double> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            return Math.Sqrt(PopulationVariance(data));
-        }
-
-        /// <summary>
-        /// Calculates the biased sample standard deviation (on a dataset of size N will use an N normalizer).
-        /// </summary>
-        /// <param name="data">The data to calculate the standard deviation of.</param>
-        /// <returns>The standard deviation of the sample.</returns>
-        public static double PopulationStandardDeviation(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            return Math.Sqrt(PopulationVariance(data));
-        }
-
-        /// <summary>
         /// Returns the minimum value in the sample data.
-        /// </summary>
-        /// <param name="data">The sample data.</param>
-        /// <returns>The minimum value in the sample data.</returns>
-        public static double Minimum(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double min = double.MaxValue;
-            ulong count = 0;
-            foreach (double? d in data)
-            {
-                if (d.HasValue)
-                {
-                    min = Math.Min(min, d.Value);
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                throw new ArgumentException(Resources.CollectionEmpty, "data");
-            }
-
-            return min;
-        }
-
-        /// <summary>
-        /// Returns the maximum value in the sample data.
-        /// </summary>
-        /// <param name="data">The sample data.</param>
-        /// <returns>The maximum value in the sample data.</returns>
-        public static double Maximum(this IEnumerable<double?> data)
-        {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double max = double.MinValue;
-            ulong count = 0;
-            foreach (double? d in data)
-            {
-                if (d.HasValue)
-                {
-                    max = Math.Max(max, d.Value);
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                throw new ArgumentException(Resources.CollectionEmpty, "data");
-            }
-
-            return max;
-        }
-
-        /// <summary>
-        /// Returns the minimum value in the sample data.
+        /// Returns NaN if data is empty or if any entry is NaN.
         /// </summary>
         /// <param name="data">The sample data.</param>
         /// <returns>The minimum value in the sample data.</returns>
         public static double Minimum(this IEnumerable<double> data)
         {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double min = double.MaxValue;
-            ulong count = 0;
-            foreach (double d in data)
-            {
-                min = Math.Min(min, d);
-                count++;
-            }
-
-            if (count == 0)
-            {
-                throw new ArgumentException(Resources.CollectionEmpty, "data");
-            }
-
-            return min;
+            var array = data as double[];
+            return array != null
+                ? ArrayStatistics.Minimum(array)
+                : StreamingStatistics.Minimum(data);
+        }
+        /// <summary>
+        /// Returns the minimum value in the sample data.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="data">The sample data.</param>
+        /// <returns>The minimum value in the sample data.</returns>
+        public static double Minimum(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            return StreamingStatistics.Minimum(data.Where(d => d.HasValue).Select(d => d.Value));
         }
 
         /// <summary>
         /// Returns the maximum value in the sample data.
+        /// Returns NaN if data is empty or if any entry is NaN.
         /// </summary>
         /// <param name="data">The sample data.</param>
         /// <returns>The maximum value in the sample data.</returns>
         public static double Maximum(this IEnumerable<double> data)
         {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            double max = double.MinValue;
-            ulong count = 0;
-            foreach (double d in data)
-            {
-                max = Math.Max(max, d);
-                count++;
-            }
-
-            if (count == 0)
-            {
-                throw new ArgumentException(Resources.CollectionEmpty, "data");
-            }
-
-            return max;
+            var array = data as double[];
+            return array != null
+                ? ArrayStatistics.Maximum(array)
+                : StreamingStatistics.Maximum(data);
         }
 
         /// <summary>
-        /// Calculates the sample median.
+        /// Returns the maximum value in the sample data.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// Null-entries are ignored.
         /// </summary>
-        /// <param name="data">The data to calculate the median of.</param>
-        /// <returns>The median of the sample.</returns>
+        /// <param name="data">The sample data.</param>
+        /// <returns>The maximum value in the sample data.</returns>
+        public static double Maximum(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            return StreamingStatistics.Maximum(data.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Estimates the sample mean.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// </summary>
+        /// <param name="data">The data to calculate the mean of.</param>
+        /// <returns>The mean of the sample.</returns>
+        public static double Mean(this IEnumerable<double> data)
+        {
+            var array = data as double[];
+            return array != null
+                ? ArrayStatistics.Mean(array)
+                : StreamingStatistics.Mean(data);
+        }
+
+        /// <summary>
+        /// Estimates the sample mean.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="data">The data to calculate the mean of.</param>
+        /// <returns>The mean of the sample.</returns>
+        public static double Mean(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            return StreamingStatistics.Mean(data.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Estimates the unbiased population variance from the provided samples.
+        /// On a dataset of size N will use an N-1 normalizer.
+        /// Returns NaN if data has less than two entries or if any entry is NaN.
+        /// </summary>
+        /// <param name="samples">A subset of samples, sampled from the full population.</param>
+        public static double Variance(this IEnumerable<double> samples)
+        {
+            var array = samples as double[];
+            return array != null
+                ? ArrayStatistics.Variance(array)
+                : StreamingStatistics.Variance(samples);
+        }
+
+        /// <summary>
+        /// Estimates the unbiased population variance from the provided samples.
+        /// On a dataset of size N will use an N-1 normalizer.
+        /// Returns NaN if data has less than two entries or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="samples">A subset of samples, sampled from the full population.</param>
+        public static double Variance(this IEnumerable<double?> samples)
+        {
+            if (samples == null) throw new ArgumentNullException("samples");
+            return StreamingStatistics.Variance(samples.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Evaluates the biased population variance from the provided full population.
+        /// On a dataset of size N will use an N normalizer.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// </summary>
+        /// <param name="population">The full population data.</param>
+        public static double PopulationVariance(this IEnumerable<double> population)
+        {
+            var array = population as double[];
+            return array != null
+                ? ArrayStatistics.PopulationVariance(array)
+                : StreamingStatistics.PopulationVariance(population);
+        }
+
+        /// <summary>
+        /// Evaluates the biased population variance from the provided full population.
+        /// On a dataset of size N will use an N normalizer.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="population">The full population data.</param>
+        public static double PopulationVariance(this IEnumerable<double?> population)
+        {
+            if (population == null) throw new ArgumentNullException("population");
+            return StreamingStatistics.PopulationVariance(population.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Estimates the unbiased population standard deviation from the provided samples.
+        /// On a dataset of size N will use an N-1 normalizer.
+        /// Returns NaN if data has less than two entries or if any entry is NaN.
+        /// </summary>
+        /// <param name="samples">A subset of samples, sampled from the full population.</param>
+        public static double StandardDeviation(this IEnumerable<double> samples)
+        {
+            var array = samples as double[];
+            return array != null
+                ? ArrayStatistics.StandardDeviation(array)
+                : StreamingStatistics.StandardDeviation(samples);
+        }
+
+        /// <summary>
+        /// Estimates the unbiased population standard deviation from the provided samples.
+        /// On a dataset of size N will use an N-1 normalizer.
+        /// Returns NaN if data has less than two entries or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="samples">A subset of samples, sampled from the full population.</param>
+        public static double StandardDeviation(this IEnumerable<double?> samples)
+        {
+            if (samples == null) throw new ArgumentNullException("samples");
+            return StreamingStatistics.StandardDeviation(samples.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Evaluates the biased population standard deviation from the provided full population.
+        /// On a dataset of size N will use an N normalizer.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// </summary>
+        /// <param name="population">The full population data.</param>
+        public static double PopulationStandardDeviation(this IEnumerable<double> population)
+        {
+            var array = population as double[];
+            return array != null
+                ? ArrayStatistics.PopulationStandardDeviation(array)
+                : StreamingStatistics.PopulationStandardDeviation(population);
+        }
+
+        /// <summary>
+        /// Evaluates the biased population standard deviation from the provided full population.
+        /// On a dataset of size N will use an N normalizer.
+        /// Returns NaN if data is empty or if any entry is NaN.
+        /// Null-entries are ignored.
+        /// </summary>
+        /// <param name="population">The full population data.</param>
+        public static double PopulationStandardDeviation(this IEnumerable<double?> population)
+        {
+            if (population == null) throw new ArgumentNullException("population");
+            return StreamingStatistics.PopulationStandardDeviation(population.Where(d => d.HasValue).Select(d => d.Value));
+        }
+
+        /// <summary>
+        /// Estimates the sample median from the provided samples (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
         public static double Median(this IEnumerable<double> data)
         {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            var dataArray = new List<double>(data);
-            int index = (dataArray.Count / 2) + 1;
-            if (dataArray.Count % 2 == 0)
-            {
-                double lower = OrderSelect(dataArray, 0, dataArray.Count - 1, index - 1);
-                double upper = dataArray.Skip(index - 1).Minimum();
-                return (lower + upper) / 2.0;
-            }
-
-            return OrderSelect(dataArray, 0, dataArray.Count - 1, index);
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.MedianInplace(array);
         }
 
         /// <summary>
-        /// Calculates the sample median.
+        /// Estimates the sample median from the provided samples (R8).
         /// </summary>
-        /// <param name="data">The data to calculate the median of.</param>
-        /// <returns>The median of the sample.</returns>
+        /// <param name="data">The data sample sequence.</param>
         public static double Median(this IEnumerable<double?> data)
         {
-            if (data == null)
-            {
-                throw new ArgumentNullException("data");
-            }
-
-            var nonNull = new List<double>();
-            foreach (double? value in data)
-            {
-                if (value.HasValue)
-                {
-                    nonNull.Add(value.Value);
-                }
-            }
-
-            if (nonNull.Count == 0)
-            {
-                throw new ArgumentException(Resources.CollectionEmpty, "data");
-            }
-
-            return nonNull.Median();
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.MedianInplace(array);
         }
 
         /// <summary>
-        /// Evaluate the i-order (1..N) statistic of the provided samples.
+        /// Estimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
         /// </summary>
-        /// <param name="samples">The sample data.</param>
-        /// <param name="order">Order of the statistic to evaluate.</param>
-        /// <returns>The i'th order statistic in the sample data.</returns>
-        public static double OrderStatistic(IEnumerable<double> samples, int order)
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        public static double Quantile(this IEnumerable<double> data, double tau)
         {
-            if (order == 1)
-            {
-                // Can be done in linear time by Min()
-                return Minimum(samples);
-            }
-
-            var list = new List<double>(samples);
-            if (order < 1 || order > list.Count)
-            {
-                throw new ArgumentOutOfRangeException("order", Resources.ArgumentInIntervalXYInclusive);
-            }
-
-            if (order == list.Count)
-            {
-                // Can be done in linear time by Max()
-                return Maximum(list);
-            }
-
-            return OrderSelect(list, 0, list.Count - 1, order);
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.QuantileInplace(array, tau);
         }
 
         /// <summary>
-        /// Implementation of the order statistics finding algorithm based on the algorithm in
-        /// "Introduction to Algorithms", Cormen et al. section 7.1.
+        /// Estimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
         /// </summary>
-        /// <param name="samples">The sample data.</param>
-        /// <param name="left">The left bound in which to order select.</param>
-        /// <param name="right">The right bound in which to order select.</param>
-        /// <param name="order">The order we are trying to find.</param>
-        /// <returns>The <paramref name="order"/> order statistic.</returns>
-        private static double OrderSelect(IList<double> samples, int left, int right, int order)
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        public static double Quantile(this IEnumerable<double?> data, double tau)
         {
-            while (true)
-            {
-                System.Diagnostics.Debug.Assert(order > 0, "Order must always be positive.");
-                System.Diagnostics.Debug.Assert(left >= 0 && left <= right, "Left side must always be positive and smaller than right side.");
-                System.Diagnostics.Debug.Assert(right < samples.Count, "Right side must always be smaller than number of elements in list.");
-                System.Diagnostics.Debug.Assert(right - left + 1 >= order, "Make sure there are at least order items in the segment [left, right].");
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.QuantileInplace(array, tau);
+        }
 
-                if (left == right)
-                {
-                    return samples[left];
-                }
+        /// <summary>
+        /// Estimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<double,double> QuantileFunc(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.Quantile(array, tau);
+        }
 
-                
-                // The pivot point. Choose median of left, right and center
-                //to be the pivot and arrange so that
-                //samples[left]<=samples[right]<=samples[center]
-                int center = (left + right) / 2;
-                if (samples[center] < samples[left])
-                    Sorting.Swap(samples, left, center);
-                if (samples[center] < samples[right])
-                    Sorting.Swap(samples, right, center);
-                if (samples[right] < samples[left])
-                    Sorting.Swap(samples, right, left);
+        /// <summary>
+        /// Estimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<double, double> QuantileFunc(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.Quantile(array, tau);
+        }
 
-                double pivot = samples[right];
+        /// <summary>
+        /// Estimates the empirical inverse CDF at tau from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        public static double InverseCDF(this IEnumerable<double> data, double tau)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.QuantileCustomInplace(array, tau, QuantileDefinition.InverseCDF);
+        }
 
-                // The partioning code.
-                int i = left;
-                for (int j = left+1; j <= right - 1; j++)
-                {
-                    if (samples[j] <= pivot)
-                    {
-                        i++;
-                        Sorting.Swap(samples, i, j);
-                    }
-                }
+        /// <summary>
+        /// Estimates the empirical inverse CDF at tau from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        public static double InverseCDF(this IEnumerable<double?> data, double tau)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.QuantileCustomInplace(array, tau, QuantileDefinition.InverseCDF);
+        }
 
-                Sorting.Swap(samples, i + 1, right);
+        /// <summary>
+        /// Estimates the empirical inverse CDF at tau from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<double, double> InverseCDFFunc(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.QuantileCustom(array, tau, QuantileDefinition.InverseCDF);
+        }
 
-                // Recursive order finding algorithm.
-                if (order == (i - left) + 2)
-                {
-                    return pivot;
-                }
+        /// <summary>
+        /// Estimates the empirical inverse CDF at tau from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<double, double> InverseCDFFunc(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.QuantileCustom(array, tau, QuantileDefinition.InverseCDF);
+        }
 
-                if (order < (i - left) + 2)
-                {
-                    right = i;
-                }
-                else
-                {
-                    order = order - i + left - 2;
-                    left = i + 2;
-                }
-            }
+        /// <summary>
+        /// stimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau. The quantile definition can be specificed to be compatible
+        /// with an existing system.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        /// <param name="definition">Quantile definition, to choose what product/definition it should be consistent with</param>
+        public static double QuantileCustom(this IEnumerable<double> data, double tau, QuantileDefinition definition)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.QuantileCustomInplace(array, tau, definition);
+        }
+
+        /// <summary>
+        /// stimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau. The quantile definition can be specificed to be compatible
+        /// with an existing system.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="tau">Quantile selector, between 0.0 and 1.0 (inclusive).</param>
+        /// <param name="definition">Quantile definition, to choose what product/definition it should be consistent with</param>
+        public static double QuantileCustom(this IEnumerable<double?> data, double tau, QuantileDefinition definition)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.QuantileCustomInplace(array, tau, definition);
+        }
+
+        /// <summary>
+        /// stimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau. The quantile definition can be specificed to be compatible
+        /// with an existing system.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="definition">Quantile definition, to choose what product/definition it should be consistent with</param>
+        public static Func<double, double> QuantileCustomFunc(this IEnumerable<double> data, QuantileDefinition definition)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.QuantileCustom(array, tau, definition);
+        }
+
+        /// <summary>
+        /// stimates the tau-th quantile from the provided samples.
+        /// The tau-th quantile is the data value where the cumulative distribution
+        /// function crosses tau. The quantile definition can be specificed to be compatible
+        /// with an existing system.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="definition">Quantile definition, to choose what product/definition it should be consistent with</param>
+        public static Func<double, double> QuantileCustomFunc(this IEnumerable<double?> data, QuantileDefinition definition)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            Array.Sort(array);
+            return tau => SortedArrayStatistics.QuantileCustom(array, tau, definition);
+        }
+
+        /// <summary>
+        /// Estimates the p-Percentile value from the provided samples.
+        /// If a non-integer Percentile is needed, use Quantile instead.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="p">Percentile selector, between 0 and 100 (inclusive).</param>
+        public static double Percentile(this IEnumerable<double> data, int p)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.PercentileInplace(array, p);
+        }
+
+        /// <summary>
+        /// Estimates the p-Percentile value from the provided samples.
+        /// If a non-integer Percentile is needed, use Quantile instead.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="p">Percentile selector, between 0 and 100 (inclusive).</param>
+        public static double Percentile(this IEnumerable<double?> data, int p)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.PercentileInplace(array, p);
+        }
+
+        /// <summary>
+        /// Estimates the p-Percentile value from the provided samples.
+        /// If a non-integer Percentile is needed, use Quantile instead.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<int, double> PercentileFunc(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            Array.Sort(array);
+            return p => SortedArrayStatistics.Percentile(array, p);
+        }
+
+        /// <summary>
+        /// Estimates the p-Percentile value from the provided samples.
+        /// If a non-integer Percentile is needed, use Quantile instead.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<int, double> PercentileFunc(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            Array.Sort(array);
+            return p => SortedArrayStatistics.Percentile(array, p);
+        }
+
+        /// <summary>
+        /// Estimates the first quartile value from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double LowerQuartile(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.LowerQuartileInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates the first quartile value from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double LowerQuartile(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.LowerQuartileInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates the third quartile value from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double UpperQuartile(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.UpperQuartileInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates the third quartile value from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double UpperQuartile(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.UpperQuartileInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates the inter-quartile range from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double InterquartileRange(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.InterquartileRangeInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates the inter-quartile range from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double InterquartileRange(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.InterquartileRangeInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates {min, lower-quantile, median, upper-quantile, max} from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double[] FiveNumberSummary(this IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.FiveNumberSummaryInplace(array);
+        }
+
+        /// <summary>
+        /// Estimates {min, lower-quantile, median, upper-quantile, max} from the provided samples.
+        /// Approximately median-unbiased regardless of the sample distribution (R8).
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static double[] FiveNumberSummary(this IEnumerable<double?> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.Where(d => d.HasValue).Select(d => d.Value).ToArray();
+            return ArrayStatistics.FiveNumberSummaryInplace(array);
+        }
+
+        /// <summary>
+        /// Returns the order statistic (order 1..N) from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        /// <param name="order">One-based order of the statistic, must be between 1 and N (inclusive).</param>
+        public static double OrderStatistic(IEnumerable<double> data, int order)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            return ArrayStatistics.OrderStatisticInplace(array, order);
+        }
+
+        /// <summary>
+        /// Returns the order statistic (order 1..N) from the provided samples.
+        /// </summary>
+        /// <param name="data">The data sample sequence.</param>
+        public static Func<int, double> OrderStatisticFunc(IEnumerable<double> data)
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = data.ToArray();
+            Array.Sort(array);
+            return order => SortedArrayStatistics.OrderStatistic(array, order);
         }
     }
 }

@@ -3,7 +3,9 @@
 // http://numerics.mathdotnet.com
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
-// Copyright (c) 2009-2010 Math.NET
+//
+// Copyright (c) 2009-2013 Math.NET
+//
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
 // files (the "Software"), to deal in the Software without
@@ -12,8 +14,10 @@
 // copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following
 // conditions:
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 // OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,7 +30,6 @@
 
 namespace MathNet.Numerics.UnitTests.StatisticsTests
 {
-    using System;
     using NUnit.Framework;
     using Statistics;
 
@@ -39,7 +42,7 @@ namespace MathNet.Numerics.UnitTests.StatisticsTests
         /// <summary>
         /// Data array
         /// </summary>
-        private static readonly double[] Data = { 95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.061, 95.1591, 95.1195, 95.1065, 95.0925, 95.199, 95.1682 };
+        static readonly double[] Data = {95.1772, 95.1567, 95.1937, 95.1959, 95.1442, 95.061, 95.1591, 95.1195, 95.1065, 95.0925, 95.199, 95.1682};
 
         /// <summary>
         /// Can compute percentile using NIST method.
@@ -48,10 +51,11 @@ namespace MathNet.Numerics.UnitTests.StatisticsTests
         public void CanComputePercentileUsingNistMethod()
         {
             var percentile = new Percentile(Data)
-                             {
-                                 Method = PercentileMethod.Nist
-                             };
+                {
+                    Method = PercentileMethod.Nist
+                };
             Assert.AreEqual(95.19807, percentile.Compute(.9));
+            Assert.AreEqual(95.19807, Data.QuantileCustom(.9, QuantileDefinition.Nist));
         }
 
         /// <summary>
@@ -61,10 +65,11 @@ namespace MathNet.Numerics.UnitTests.StatisticsTests
         public void CanComputePercentileUsingExcelMethod()
         {
             var percentile = new Percentile(Data)
-                             {
-                                 Method = PercentileMethod.Excel
-                             };
+                {
+                    Method = PercentileMethod.Excel
+                };
             Assert.AreEqual(95.19568, percentile.Compute(.9));
+            Assert.AreEqual(95.19568, Data.QuantileCustom(.9, QuantileDefinition.Excel));
         }
 
         /// <summary>
@@ -74,10 +79,11 @@ namespace MathNet.Numerics.UnitTests.StatisticsTests
         public void CanComputePercentileUsingNearestMethod()
         {
             var percentile = new Percentile(Data)
-                             {
-                                 Method = PercentileMethod.Nearest
-                             };
+                {
+                    Method = PercentileMethod.Nearest
+                };
             Assert.AreEqual(95.1959, percentile.Compute(.9));
+            Assert.AreEqual(95.1959, Data.QuantileCustom(.9, QuantileDefinition.Nearest));
         }
 
         /// <summary>
@@ -86,45 +92,47 @@ namespace MathNet.Numerics.UnitTests.StatisticsTests
         [Test]
         public void CanComputePercentileUsingInterpolationMethod()
         {
-            var data = new double[] { 1, 2, 3, 4, 5 };
+            var data = new double[] {1, 2, 3, 4, 5};
             var percentile = new Percentile(data)
-                             {
-                                 Method = PercentileMethod.Interpolation
-                             };
-            var values = new[] { .25, .5, .75 };
+                {
+                    Method = PercentileMethod.Interpolation
+                };
+
+            var values = new[] {.25, .5, .75};
             var percentiles = percentile.Compute(values);
             Assert.AreEqual(1.75, percentiles[0]);
             Assert.AreEqual(3.0, percentiles[1]);
             Assert.AreEqual(4.25, percentiles[2]);
+
+            var q = data.QuantileCustomFunc(QuantileDefinition.R5);
+            Assert.AreEqual(1.75, q(0.25));
+            Assert.AreEqual(3.0, q(0.5));
+            Assert.AreEqual(4.25, q(0.75));
         }
 
         /// <summary>
-        /// Small dataset throws <c>ArgumentException</c>.
+        /// Empty dataset returns NaN.
         /// </summary>
         [Test]
-        public void SmallDataSetThrowArgumentException()
+        public void EmptyDataSetReturnsNaN()
         {
-            var data = new double[] { };
-            var data1 = data;
-            Assert.Throws<ArgumentException>(() => new Percentile(data1));
-
-            data = new double[] { 1 };
-            var data2 = data;
-            Assert.Throws<ArgumentException>(() => new Percentile(data2));
-
-            data = new double[] { 1, 2 };
-            Assert.Throws<ArgumentException>(() => new Percentile(data));
+            var data = new double[] {};
+            var percentile = new Percentile(data);
+            Assert.IsTrue(double.IsNaN(percentile.Compute(0)));
+            Assert.IsTrue(double.IsNaN(data.Quantile(0)));
         }
 
         /// <summary>
-        /// Invalid percentile values throw <c>ArgumentException</c>.
+        /// Invalid percentile values return NaN.
         /// </summary>
         [Test]
-        public void InvalidPercentileValuesThrowArgumentException()
+        public void InvalidPercentileValuesReturnNaN()
         {
             var percentile = new Percentile(Data);
-            Assert.Throws<ArgumentException>(() => percentile.Compute(-0.1));
-            Assert.Throws<ArgumentException>(() => percentile.Compute(100.1));
+            Assert.IsTrue(double.IsNaN(percentile.Compute(-0.1)));
+            Assert.IsTrue(double.IsNaN(percentile.Compute(1.1)));
+            Assert.IsTrue(double.IsNaN(Data.Quantile(-0.1)));
+            Assert.IsTrue(double.IsNaN(Data.Quantile(1.1)));
         }
     }
 }
