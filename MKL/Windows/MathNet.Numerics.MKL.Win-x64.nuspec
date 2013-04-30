@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
         <id>MathNet.Numerics.MKL.Win-x64</id>
-        <version>1.2.1</version>
+        <version>1.3.0</version>
         <title>Math.NET Numerics - MKL Native Libraries (Windows 64-bit)</title>
         <authors>Marcus Cuda,Christoph Ruegg,Jurgen Van Gael</authors>
         <owners>Christoph Ruegg</owners>

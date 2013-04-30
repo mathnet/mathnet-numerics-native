@@ -3,7 +3,9 @@
 // http://numerics.mathdotnet.com
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
-// Copyright (c) 2009-2010 Math.NET
+//
+// Copyright (c) 2009-2013 Math.NET
+//
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
 // files (the "Software"), to deal in the Software without
@@ -12,8 +14,10 @@
 // copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following
 // conditions:
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 // OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,15 +30,14 @@
 
 namespace MathNet.Numerics.LinearAlgebra.Generic
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Numerics;
-    using System.Runtime;
-    using System.Text;
     using Factorization;
     using Numerics;
     using Properties;
     using Storage;
+    using System;
+    using System.Collections.Generic;
+    using System.Numerics;
+    using System.Runtime;
 
     /// <summary>
     /// Defines the base class for <c>Matrix</c> classes.
@@ -42,10 +45,9 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
     /// <typeparam name="T">Supported data types are <c>double</c>, <c>single</c>, <see cref="Complex"/>, and <see cref="Complex32"/>.</typeparam>
     [Serializable]
     public abstract partial class Matrix<T> :
-#if PORTABLE
         IFormattable, IEquatable<Matrix<T>>
-#else
-        IFormattable, IEquatable<Matrix<T>>, ICloneable
+#if !PORTABLE
+        , ICloneable
 #endif
         where T : struct, IEquatable<T>, IFormattable
     {
@@ -82,6 +84,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         /// <param name="columnVectors">The vectors to construct the matrix from.</param>
         /// <returns>The matrix constructed from the list of column vectors.</returns>
         /// <remarks>Creates a matrix of size Max(<paramref name="columnVectors"/>[i].Count) x <paramref name="columnVectors"/>.Count</remarks>
+        [Obsolete("Use DenseMatrix.OfColumns or SparseMatrix.OfColumns instead. Scheduled for removal in v3.0.")]
         public static Matrix<T> CreateFromColumns(IList<Vector<T>> columnVectors)
         {
             if (columnVectors == null)
@@ -120,6 +123,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         /// <param name="rowVectors">The vectors to construct the matrix from.</param>
         /// <returns>The matrix constructed from the list of row vectors.</returns>
         /// <remarks>Creates a matrix of size Max(<paramref name="rowVectors"/>.Count) x <paramref name="rowVectors"/>[i].Count</remarks>
+        [Obsolete("Use DenseMatrix.OfRows or SparseMatrix.OfRows instead. Scheduled for removal in v3.0.")]
         public static Matrix<T> CreateFromRows(IList<Vector<T>> rowVectors)
         {
             if (rowVectors == null)
@@ -288,19 +292,6 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
             return result;
         }
 
-#if !PORTABLE
-        /// <summary>
-        /// Creates a new object that is a copy of the current instance.
-        /// </summary>
-        /// <returns>
-        /// A new object that is a copy of this instance.
-        /// </returns>
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-#endif
-
         /// <summary>
         /// Copies the elements of this matrix to the given matrix.
         /// </summary>
@@ -385,7 +376,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
                 throw new ArgumentNullException("result");
             }
 
-            Storage.CopySubRowTo(result.Storage, index, 0, 0, ColumnCount);
+            Storage.CopyRowTo(result.Storage, index);
         }
 
         /// <summary>
@@ -470,7 +461,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
                 throw new ArgumentNullException("result");
             }
 
-            Storage.CopySubColumnTo(result.Storage, index, 0, 0, RowCount);
+            Storage.CopyColumnTo(result.Storage, index);
         }
 
         /// <summary>
@@ -581,7 +572,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
             {
                 for (var column = 0; column < ColumnCount; column++)
                 {
-                    result.At(row, column, row >= column ? At(row, column) : default(T));
+                    result.At(row, column, row >= column ? At(row, column) : Zero);
                 }
             }
         }
@@ -608,7 +599,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
             {
                 for (var column = 0; column < ColumnCount; column++)
                 {
-                    result.At(row, column, row <= column ? At(row, column) : default(T));
+                    result.At(row, column, row <= column ? At(row, column) : Zero);
                 }
             }
         }
@@ -632,7 +623,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         public virtual Matrix<T> SubMatrix(int rowIndex, int rowCount, int columnIndex, int columnCount)
         {
             var target = CreateMatrix(rowCount, columnCount);
-            Storage.CopySubMatrixTo(target.Storage, rowIndex, 0, rowCount, columnIndex, 0, columnCount);
+            Storage.CopySubMatrixTo(target.Storage, rowIndex, 0, rowCount, columnIndex, 0, columnCount, skipClearing: true);
             return target;
         }
 
@@ -697,7 +688,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
             {
                 for (var column = 0; column < ColumnCount; column++)
                 {
-                    result.At(row, column, row > column ? At(row, column) : default(T));
+                    result.At(row, column, row > column ? At(row, column) : Zero);
                 }
             }
         }
@@ -744,7 +735,7 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
             {
                 for (var column = 0; column < ColumnCount; column++)
                 {
-                    result.At(row, column, row < column ? At(row, column) : default(T));
+                    result.At(row, column, row < column ? At(row, column) : Zero);
                 }
             }
         }
@@ -793,6 +784,26 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         }
 
         /// <summary>
+        /// Copies the values of the given Vector to the specified column.
+        /// </summary>
+        /// <param name="columnIndex">The column to copy the values to.</param>
+        /// <param name="column">The vector to copy the values from.</param>
+        /// <exception cref="ArgumentNullException">If <paramref name="column"/> is <see langword="null" />.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> is less than zero,
+        /// or greater than or equal to the number of columns.</exception>
+        /// <exception cref="ArgumentException">If the size of <paramref name="column"/> does not
+        /// equal the number of rows of this <strong>Matrix</strong>.</exception>
+        public void SetColumn(int columnIndex, Vector<T> column)
+        {
+            if (column == null)
+            {
+                throw new ArgumentNullException("column");
+            }
+
+            column.Storage.CopyToColumn(Storage, columnIndex);
+        }
+
+        /// <summary>
         /// Copies the values of the given array to the specified column.
         /// </summary>
         /// <param name="columnIndex">The column to copy the values to.</param>
@@ -804,60 +815,14 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         /// equal the number of rows of this <strong>Matrix</strong>.</exception>
         /// <exception cref="ArgumentException">If the size of <paramref name="column"/> does not
         /// equal the number of rows of this <strong>Matrix</strong>.</exception>
-        public virtual void SetColumn(int columnIndex, T[] column)
+        public void SetColumn(int columnIndex, T[] column)
         {
-            if (columnIndex < 0 || columnIndex >= ColumnCount)
-            {
-                throw new ArgumentOutOfRangeException("columnIndex");
-            }
-
             if (column == null)
             {
                 throw new ArgumentNullException("column");
             }
 
-            if (column.Length != RowCount)
-            {
-                throw new ArgumentException(Resources.ArgumentMatrixSameRowDimension, "column");
-            }
-
-            for (var i = 0; i < RowCount; i++)
-            {
-                At(i, columnIndex, column[i]);
-            }
-        }
-
-        /// <summary>
-        /// Copies the values of the given Vector to the specified column.
-        /// </summary>
-        /// <param name="columnIndex">The column to copy the values to.</param>
-        /// <param name="column">The vector to copy the values from.</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="column"/> is <see langword="null" />.</exception>
-        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="columnIndex"/> is less than zero,
-        /// or greater than or equal to the number of columns.</exception>
-        /// <exception cref="ArgumentException">If the size of <paramref name="column"/> does not
-        /// equal the number of rows of this <strong>Matrix</strong>.</exception>
-        public virtual void SetColumn(int columnIndex, Vector<T> column)
-        {
-            if (columnIndex < 0 || columnIndex >= ColumnCount)
-            {
-                throw new ArgumentOutOfRangeException("columnIndex");
-            }
-
-            if (column == null)
-            {
-                throw new ArgumentNullException("column");
-            }
-
-            if (column.Count != RowCount)
-            {
-                throw new ArgumentException(Resources.ArgumentMatrixSameRowDimension, "column");
-            }
-
-            for (var i = 0; i < RowCount; i++)
-            {
-                At(i, columnIndex, column[i]);
-            }
+            new DenseVectorStorage<T>(column.Length, column).CopyToColumn(Storage, columnIndex);
         }
 
         /// <summary>
@@ -913,27 +878,14 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         /// or greater than or equal to the number of rows.</exception>
         /// <exception cref="ArgumentException">If the size of <paramref name="row"/> does not
         /// equal the number of columns of this <strong>Matrix</strong>.</exception>
-        public virtual void SetRow(int rowIndex, Vector<T> row)
+        public void SetRow(int rowIndex, Vector<T> row)
         {
-            if (rowIndex < 0 || rowIndex >= RowCount)
-            {
-                throw new ArgumentOutOfRangeException("rowIndex");
-            }
-
             if (row == null)
             {
                 throw new ArgumentNullException("row");
             }
 
-            if (row.Count != ColumnCount)
-            {
-                throw new ArgumentException(Resources.ArgumentMatrixSameRowDimension, "row");
-            }
-
-            for (var i = 0; i < ColumnCount; i++)
-            {
-                At(rowIndex, i, row[i]);
-            }
+            row.Storage.CopyToRow(Storage, rowIndex);
         }
 
         /// <summary>
@@ -946,27 +898,14 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         /// or greater than or equal to the number of rows.</exception>
         /// <exception cref="ArgumentException">If the size of <paramref name="row"/> does not
         /// equal the number of columns of this <strong>Matrix</strong>.</exception>
-        public virtual void SetRow(int rowIndex, T[] row)
+        public void SetRow(int rowIndex, T[] row)
         {
-            if (rowIndex < 0 || rowIndex >= RowCount)
-            {
-                throw new ArgumentOutOfRangeException("rowIndex");
-            }
-
             if (row == null)
             {
                 throw new ArgumentNullException("row");
             }
 
-            if (row.Length != ColumnCount)
-            {
-                throw new ArgumentException(Resources.ArgumentMatrixSameRowDimension, "row");
-            }
-
-            for (var i = 0; i < ColumnCount; i++)
-            {
-                At(rowIndex, i, row[i]);
-            }
+            new DenseVectorStorage<T>(row.Length, row).CopyToRow(Storage, rowIndex);
         }
 
         /// <summary>
@@ -1501,87 +1440,24 @@ namespace MathNet.Numerics.LinearAlgebra.Generic
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Applies a function to each value of this matrix and replaces the value with its result.
+        /// If forceMapZero is not set to true, zero values may or may not be skipped depending
+        /// on the actual data storage implementation (relevant mostly for sparse matrices).
         /// </summary>
-        /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
-        /// </returns>
-        public override string ToString()
+        public void MapInplace(Func<T, T> f, bool forceMapZeros = false)
         {
-            return ToString(null);
+            Storage.MapInplace(f, forceMapZeros);
         }
 
         /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
+        /// Applies a function to each value of this matrix and replaces the value with its result.
+        /// The row and column indices of each value (zero-based) are passed as first arguments to the function.
+        /// If forceMapZero is not set to true, zero values may or may not be skipped depending
+        /// on the actual data storage implementation (relevant mostly for sparse matrices).
         /// </summary>
-        /// <param name="format">
-        /// The format to use.
-        /// </param>
-        /// <param name="formatProvider">
-        /// The format provider to use.
-        /// </param>
-        /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
-        /// </returns>
-        public virtual string ToString(string format, IFormatProvider formatProvider = null)
+        public void MapIndexedInplace(Func<int, int, T, T> f, bool forceMapZeros = false)
         {
-            var stringBuilder = new StringBuilder();
-            for (var row = 0; row < RowCount; row++)
-            {
-                for (var column = 0; column < ColumnCount; column++)
-                {
-                    stringBuilder.Append(At(row, column).ToString(format, formatProvider));
-                    if (column != ColumnCount - 1)
-                    {
-                        stringBuilder.Append(formatProvider.GetTextInfo().ListSeparator);
-                    }
-                }
-
-                if (row != RowCount - 1)
-                {
-                    stringBuilder.Append(Environment.NewLine);
-                }
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        /// <summary>
-        /// Returns a hash code for this instance.
-        /// </summary>
-        /// <returns>
-        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
-        /// </returns>
-        public override int GetHashCode()
-        {
-            return Storage.GetHashCode();
-        }
-
-        /// <summary>
-        /// Indicates whether the current object is equal to another object of the same type.
-        /// </summary>
-        /// <param name="other">
-        /// An object to compare with this object.
-        /// </param>
-        /// <returns>
-        /// <c>true</c> if the current object is equal to the <paramref name="other"/> parameter; otherwise, <c>false</c>.
-        /// </returns>
-        public bool Equals(Matrix<T> other)
-        {
-            return other != null && Storage.Equals(other.Storage);
-        }
-
-        /// <summary>
-        /// Determines whether the specified <see cref="System.Object"/> is equal to this instance.
-        /// </summary>
-        /// <param name="obj">The <see cref="System.Object"/> to compare with this instance.</param>
-        /// <returns>
-        ///     <c>true</c> if the specified <see cref="System.Object"/> is equal to this instance; otherwise, <c>false</c>.
-        /// </returns>
-        public override bool Equals(object obj)
-        {
-            var other = obj as Matrix<T>;
-            return other != null && Storage.Equals(other.Storage);
+            Storage.MapIndexedInplace(f, forceMapZeros);
         }
     }
 }

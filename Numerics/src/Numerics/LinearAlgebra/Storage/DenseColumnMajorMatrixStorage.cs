@@ -1,5 +1,37 @@
-﻿using System;
+﻿// <copyright file="DenseColumnMajorMatrixStorage.cs" company="Math.NET">
+// Math.NET Numerics, part of the Math.NET Project
+// http://numerics.mathdotnet.com
+// http://github.com/mathnet/mathnet-numerics
+// http://mathnetnumerics.codeplex.com
+//
+// Copyright (c) 2009-2013 Math.NET
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+// </copyright>
+
+using System;
+using System.Collections.Generic;
 using MathNet.Numerics.Properties;
+using MathNet.Numerics.Threading;
 
 namespace MathNet.Numerics.LinearAlgebra.Storage
 {
@@ -68,6 +100,140 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
+        // INITIALIZATION
+
+        public static DenseColumnMajorMatrixStorage<T> OfMatrix(MatrixStorage<T> matrix)
+        {
+            var storage = new DenseColumnMajorMatrixStorage<T>(matrix.RowCount, matrix.ColumnCount);
+            matrix.CopyToUnchecked(storage, skipClearing: true);
+            return storage;
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfArray(T[,] array)
+        {
+            var storage = new DenseColumnMajorMatrixStorage<T>(array.GetLength(0), array.GetLength(1));
+            int index = 0;
+            for (var j = 0; j < storage.ColumnCount; j++)
+            {
+                for (var i = 0; i < storage.RowCount; i++)
+                {
+                    storage.Data[index++] = array[i, j];
+                }
+            }
+            return storage;
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfInit(int rows, int columns, Func<int, int, T> init)
+        {
+            var storage = new DenseColumnMajorMatrixStorage<T>(rows, columns);
+            int index = 0;
+            for (var j = 0; j < storage.ColumnCount; j++)
+            {
+                for (var i = 0; i < storage.RowCount; i++)
+                {
+                    storage.Data[index++] = init(i, j);
+                }
+            }
+            return storage;
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfIndexedEnumerable(int rows, int columns, IEnumerable<Tuple<int, int, T>> data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+
+            var array = new T[rows * columns];
+            foreach (var item in data)
+            {
+                array[(item.Item2 * rows) + item.Item1] = item.Item3;
+            }
+            return new DenseColumnMajorMatrixStorage<T>(rows, columns, array);
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfColumnMajorEnumerable(int rows, int columns, IEnumerable<T> data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+
+            var arrayData = data as T[];
+            if (arrayData != null)
+            {
+                var copy = new T[arrayData.Length];
+                Array.Copy(arrayData, copy, arrayData.Length);
+                return new DenseColumnMajorMatrixStorage<T>(rows, columns, copy);
+            }
+
+            var array = System.Linq.Enumerable.ToArray(data);
+            return new DenseColumnMajorMatrixStorage<T>(rows, columns, array);
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfColumnEnumerables<TColumn>(int rows, int columns, IEnumerable<TColumn> data)
+            // NOTE: flexible typing to 'backport' generic covariance.
+            where TColumn : IEnumerable<T>
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = new T[rows*columns];
+            using (var columnIterator = data.GetEnumerator())
+            {
+                for (int column = 0; column < columns; column++)
+                {
+                    if (!columnIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, rows));
+                    var arrayColumn = columnIterator.Current as T[];
+                    if (arrayColumn != null)
+                    {
+                        Array.Copy(arrayColumn, 0, array, column*rows, rows);
+                    }
+                    else
+                    {
+                        using (var rowIterator = columnIterator.Current.GetEnumerator())
+                        {
+                            var end = (column + 1)*rows;
+                            for (int index = column*rows; index < end; index++)
+                            {
+                                if (!rowIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, columns));
+                                array[index] = rowIterator.Current;
+                            }
+                            if (rowIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, columns));
+                        }
+                    }
+                }
+                if (columnIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, rows));
+            }
+            return new DenseColumnMajorMatrixStorage<T>(rows, columns, array);
+        }
+
+        public static DenseColumnMajorMatrixStorage<T> OfRowEnumerables<TRow>(int rows, int columns, IEnumerable<TRow> data)
+            // NOTE: flexible typing to 'backport' generic covariance.
+            where TRow : IEnumerable<T>
+        {
+            if (data == null) throw new ArgumentNullException("data");
+            var array = new T[rows*columns];
+            using (var rowIterator = data.GetEnumerator())
+            {
+                for (int row = 0; row < rows; row++)
+                {
+                    if (!rowIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, rows));
+                    using (var columnIterator = rowIterator.Current.GetEnumerator())
+                    {
+                        for (int index = row; index < array.Length; index += rows)
+                        {
+                            if (!columnIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, columns));
+                            array[index] = columnIterator.Current;
+                        }
+                        if (columnIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, columns));
+                    }
+                }
+                if (rowIterator.MoveNext()) throw new ArgumentOutOfRangeException("data", string.Format(Resources.ArgumentArrayWrongLength, rows));
+            }
+            return new DenseColumnMajorMatrixStorage<T>(rows, columns, array);
+        }
+
+        // MATRIX COPY
+
         internal override void CopyToUnchecked(MatrixStorage<T> target, bool skipClearing = false)
         {
             var denseTarget = target as DenseColumnMajorMatrixStorage<T>;
@@ -122,12 +288,17 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
+        // ROW COPY
+
         internal override void CopySubRowToUnchecked(VectorStorage<T> target, int rowIndex, int sourceColumnIndex, int targetColumnIndex, int columnCount, bool skipClearing = false)
         {
-            var denseTarget = target as DenseVectorStorage<T>;
-            if (denseTarget != null)
+            var targetDense = target as DenseVectorStorage<T>;
+            if (targetDense != null)
             {
-                CopySubRowToUnchecked(denseTarget, rowIndex, sourceColumnIndex, targetColumnIndex, columnCount);
+                for (int j = 0; j<columnCount; j++)
+                {
+                    targetDense.Data[j + targetColumnIndex] = Data[(j + sourceColumnIndex) * RowCount + rowIndex];
+                }
                 return;
             }
 
@@ -139,20 +310,14 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        void CopySubRowToUnchecked(DenseVectorStorage<T> target, int rowIndex, int sourceColumnIndex, int targetColumnIndex, int columnCount, bool skipClearing = false)
-        {
-            for (int j = 0; j<columnCount; j++)
-            {
-                target.Data[j + targetColumnIndex] = Data[(j + sourceColumnIndex) * RowCount + rowIndex];
-            }
-        }
+        // COLUMN COPY
 
         internal override void CopySubColumnToUnchecked(VectorStorage<T> target, int columnIndex, int sourceRowIndex, int targetRowIndex, int rowCount, bool skipClearing = false)
         {
-            var denseTarget = target as DenseVectorStorage<T>;
-            if (denseTarget != null)
+            var targetDense = target as DenseVectorStorage<T>;
+            if (targetDense != null)
             {
-                CopySubColumnToUnchecked(denseTarget, columnIndex, sourceRowIndex, targetRowIndex, rowCount);
+                Array.Copy(Data, columnIndex*RowCount + sourceRowIndex, targetDense.Data, targetRowIndex, rowCount);
                 return;
             }
 
@@ -165,10 +330,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
-        void CopySubColumnToUnchecked(DenseVectorStorage<T> target, int columnIndex, int sourceRowIndex, int targetRowIndex, int rowCount, bool skipClearing = false)
-        {
-            Array.Copy(Data, columnIndex*RowCount + sourceRowIndex, target.Data, targetRowIndex, rowCount);
-        }
+        // EXTRACT
 
         public override T[] ToRowMajorArray()
         {
@@ -202,6 +364,32 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                 }
             }
             return ret;
+        }
+
+        // FUNCTIONAL COMBINATORS
+
+        public override void MapInplace(Func<T, T> f, bool forceMapZeros = false)
+        {
+            CommonParallel.For(0, Data.Length, 4096, (a, b) =>
+                {
+                    for (int i = a; i < b; i++)
+                    {
+                        Data[i] = f(Data[i]);
+                    }
+                });
+        }
+
+        public override void MapIndexedInplace(Func<int, int, T, T> f, bool forceMapZeros = false)
+        {
+            int index = 0;
+            for (int j = 0; j < ColumnCount; j++)
+            {
+                for (int i = 0; i < RowCount; i++)
+                {
+                    Data[index] = f(i, j, Data[index]);
+                    index++;
+                }
+            }
         }
     }
 }

@@ -3,7 +3,9 @@
 // http://numerics.mathdotnet.com
 // http://github.com/mathnet/mathnet-numerics
 // http://mathnetnumerics.codeplex.com
-// Copyright (c) 2009-2010 Math.NET
+//
+// Copyright (c) 2009-2013 Math.NET
+//
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
 // files (the "Software"), to deal in the Software without
@@ -12,8 +14,10 @@
 // copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following
 // conditions:
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
 // OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,14 +30,17 @@
 
 namespace MathNet.Numerics.LinearAlgebra.Single
 {
-    using System;
-    using System.Linq;
+    using Distributions;
     using Generic;
     using Properties;
     using Storage;
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
 
     /// <summary>
-    /// A matrix type for diagonal matrices. 
+    /// A matrix type for diagonal matrices.
     /// </summary>
     /// <remarks>
     /// Diagonal matrices can be non-square matrices but the diagonal always starts
@@ -42,6 +49,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
     /// 0.0 or NaN; these settings will cause no change to the diagonal matrix.
     /// </remarks>
     [Serializable]
+    [DebuggerDisplay("DiagonalMatrix {RowCount}x{ColumnCount}-Single")]
     public class DiagonalMatrix : Matrix
     {
         readonly DiagonalMatrixStorage<float> _storage;
@@ -53,7 +61,10 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         readonly float[] _data;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class.
+        /// Create a new diagonal matrix straight from an initialized matrix storage instance.
+        /// The storage is used directly without copying.
+        /// Intended for advanced scenarios where you're working directly with
+        /// storage for performance or interop reasons.
         /// </summary>
         public DiagonalMatrix(DiagonalMatrixStorage<float> storage)
             : base(storage)
@@ -63,97 +74,134 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class. This matrix is square with a given size.
+        /// Create a new square diagonal matrix with the given number of rows and columns.
+        /// All cells of the matrix will be initialized to zero.
+        /// Zero-length matrices are not supported.
         /// </summary>
-        /// <param name="order">the size of the square matrix.</param>
-        /// <exception cref="ArgumentException">
-        /// If <paramref name="order"/> is less than one.
-        /// </exception>
+        /// <exception cref="ArgumentException">If the order is less than one.</exception>
         public DiagonalMatrix(int order)
-            : this(new DiagonalMatrixStorage<float>(order, order, 0f))
+            : this(new DiagonalMatrixStorage<float>(order, order))
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class.
+        /// Create a new diagonal matrix with the given number of rows and columns.
+        /// All cells of the matrix will be initialized to zero.
+        /// Zero-length matrices are not supported.
         /// </summary>
-        /// <param name="rows">
-        /// The number of rows.
-        /// </param>
-        /// <param name="columns">
-        /// The number of columns.
-        /// </param>
+        /// <exception cref="ArgumentException">If the row or column count is less than one.</exception>
         public DiagonalMatrix(int rows, int columns)
-            : this(new DiagonalMatrixStorage<float>(rows, columns, 0f))
+            : this(new DiagonalMatrixStorage<float>(rows, columns))
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class with all diagonal entries set to a particular value.
+        /// Create a new diagonal matrix with the given number of rows and columns.
+        /// All diagonal cells of the matrix will be initialized to the provided value, all non-diagonal ones to zero.
+        /// Zero-length matrices are not supported.
         /// </summary>
-        /// <param name="rows">
-        /// The number of rows.
-        /// </param>
-        /// <param name="columns">
-        /// The number of columns.
-        /// </param>
-        /// <param name="value">The value which we assign to each diagonal element of the matrix.</param>
-        public DiagonalMatrix(int rows, int columns, float value)
+        /// <exception cref="ArgumentException">If the row or column count is less than one.</exception>
+        public DiagonalMatrix(int rows, int columns, float diagonalValue)
             : this(rows, columns)
         {
             for (var i = 0; i < _data.Length; i++)
             {
-                _data[i] = value;
+                _data[i] = diagonalValue;
             }
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class from a one dimensional array with diagonal elements. This constructor
-        /// will reference the one dimensional array and not copy it.
+        /// Create a new diagonal matrix with the given number of rows and columns directly binding to a raw array.
+        /// The array is assumed to contain the diagonal elements only and is used directly without copying.
+        /// Very efficient, but changes to the array and the matrix will affect each other.
         /// </summary>
-        /// <param name="rows">The number of rows.</param>
-        /// <param name="columns">The number of columns.</param>
-        /// <param name="diagonalArray">The one dimensional array which contain diagonal elements.</param>
-        public DiagonalMatrix(int rows, int columns, float[] diagonalArray)
-            : this(new DiagonalMatrixStorage<float>(rows, columns, 0f, diagonalArray))
+        public DiagonalMatrix(int rows, int columns, float[] diagonalStorage)
+            : this(new DiagonalMatrixStorage<float>(rows, columns, diagonalStorage))
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class from a 2D array. 
+        /// Create a new diagonal matrix as a copy of the given other matrix.
+        /// This new matrix will be independent from the other matrix.
+        /// The matrix to copy from must be diagonal as well.
+        /// A new memory block will be allocated for storing the matrix.
         /// </summary>
-        /// <param name="array">The 2D array to create this matrix from.</param>
-        /// <exception cref="IndexOutOfRangeException">When <paramref name="array"/> contains an off-diagonal element.</exception>
-        /// <exception cref="IndexOutOfRangeException">Depending on the implementation, an <see cref="IndexOutOfRangeException"/>
-        /// may be thrown if one of the indices is outside the dimensions of the matrix.</exception>
+        public static DiagonalMatrix OfMatrix(Matrix<float> matrix)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfMatrix(matrix.Storage));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix as a copy of the given two-dimensional array.
+        /// This new matrix will be independent from the provided array.
+        /// The array to copy from must be diagonal as well.
+        /// A new memory block will be allocated for storing the matrix.
+        /// </summary>
+        public static DiagonalMatrix OfArray(float[,] array)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfArray(array));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix and initialize each diagonal value from the provided indexed enumerable.
+        /// Keys must be provided at most once, zero is assumed if a key is omitted.
+        /// This new matrix will be independent from the enumerable.
+        /// A new memory block will be allocated for storing the matrix.
+        /// </summary>
+        public static DiagonalMatrix OfIndexedDiagonal(int rows, int columns, IEnumerable<Tuple<int, float>> diagonal)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfIndexedEnumerable(rows, columns, diagonal));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix and initialize each diagonal value from the provided enumerable.
+        /// This new matrix will be independent from the enumerable.
+        /// A new memory block will be allocated for storing the matrix.
+        /// </summary>
+        public static DiagonalMatrix OfDiagonal(int rows, int columns, IEnumerable<float> diagonal)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfEnumerable(rows, columns, diagonal));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix and initialize each diagonal value using the provided init function.
+        /// </summary>
+        public static DiagonalMatrix Create(int rows, int columns, Func<int, float> init)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfInit(rows, columns, init));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix with diagonal values sampled from the provided random distribution.
+        /// </summary>
+        public static DiagonalMatrix CreateRandom(int rows, int columns, IContinuousDistribution distribution)
+        {
+            return new DiagonalMatrix(DiagonalMatrixStorage<float>.OfInit(rows, columns,
+                i => (float) distribution.Sample()));
+        }
+
+        /// <summary>
+        /// Create a new diagonal matrix as a copy of the given two-dimensional array.
+        /// This new matrix will be independent from the provided array.
+        /// The array to copy from must be diagonal as well.
+        /// A new memory block will be allocated for storing the matrix.
+        /// </summary>
+        [Obsolete("Use DiagonalMatrix.OfArray instead. Scheduled for removal in v3.0.")]
         public DiagonalMatrix(float[,] array)
-            : this(array.GetLength(0), array.GetLength(1))
+            : this(DiagonalMatrixStorage<float>.OfArray(array))
         {
-            for (var i = 0; i < RowCount; i++)
-            {
-                for (var j = 0; j < ColumnCount; j++)
-                {
-                    if (i == j)
-                    {
-                        _data[i] = array[i, j];
-                    }
-                    else if (array[i, j] != 0.0 && !float.IsNaN(array[i, j]))
-                    {
-                        throw new IndexOutOfRangeException("Cannot set an off-diagonal element in a diagonal matrix.");
-                    }
-                }
-            }
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="DiagonalMatrix"/> class, copying
-        /// the values from the given matrix.
+        /// Create a new diagonal matrix as a copy of the given other matrix.
+        /// This new matrix will be independent from the other matrix.
+        /// The matrix to copy from must be diagonal as well.
+        /// A new memory block will be allocated for storing the matrix.
         /// </summary>
-        /// <param name="matrix">The matrix to copy.</param>
+        [Obsolete("Use DiagonalMatrix.OfMatrix instead. Scheduled for removal in v3.0.")]
         public DiagonalMatrix(Matrix<float> matrix)
-            : this(matrix.RowCount, matrix.ColumnCount)
+            : this(DiagonalMatrixStorage<float>.OfMatrix(matrix.Storage))
         {
-            matrix.Storage.CopyToUnchecked(Storage, skipClearing: true);
         }
 
         /// <summary>
@@ -176,6 +224,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// Creates a <see cref="Vector{T}"/> with a the given dimension.
         /// </summary>
         /// <param name="size">The size of the vector.</param>
+        /// <param name="fullyMutable">True if all fields must be mutable.</param>
         /// <returns>
         /// A <see cref="Vector{T}"/> with the given dimension.
         /// </returns>
@@ -226,34 +275,14 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// <param name="result">The matrix to store the result of the addition.</param>
         /// <exception cref="ArgumentNullException">If the other matrix is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">If the two matrices don't have the same dimensions.</exception>
-        public override void Add(Matrix<float> other, Matrix<float> result)
+        protected override void DoAdd(Matrix<float> other, Matrix<float> result)
         {
-            if (other == null)
-            {
-                throw new ArgumentNullException("other");
-            }
-
-            if (result == null)
-            {
-                throw new ArgumentNullException("result");
-            }
-
-            if (other.RowCount != RowCount || other.ColumnCount != ColumnCount)
-            {
-                throw DimensionsDontMatch<ArgumentOutOfRangeException>(this, other, "other");
-            }
-
-            if (result.RowCount != RowCount || result.ColumnCount != ColumnCount)
-            {
-                throw DimensionsDontMatch<ArgumentOutOfRangeException>(this, result, "result");
-            }
-
             var diagOther = other as DiagonalMatrix;
             var diagResult = result as DiagonalMatrix;
 
             if (diagOther == null || diagResult == null)
             {
-                base.Add(other, result);
+                base.DoAdd(other, result);
             }
             else
             {
@@ -295,40 +324,20 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         }
 
         /// <summary>
-        /// Subtracts another matrix from this matrix. 
+        /// Subtracts another matrix from this matrix.
         /// </summary>
         /// <param name="other">The matrix to subtract.</param>
         /// <param name="result">The matrix to store the result of the subtraction.</param>
         /// <exception cref="ArgumentNullException">If the other matrix is <see langword="null"/>.</exception>
         /// <exception cref="ArgumentOutOfRangeException">If the two matrices don't have the same dimensions.</exception>
-        public override void Subtract(Matrix<float> other, Matrix<float> result)
+        protected override void DoSubtract(Matrix<float> other, Matrix<float> result)
         {
-            if (other == null)
-            {
-                throw new ArgumentNullException("other");
-            }
-
-            if (result == null)
-            {
-                throw new ArgumentNullException("result");
-            }
-
-            if (other.RowCount != RowCount || other.ColumnCount != ColumnCount)
-            {
-                throw DimensionsDontMatch<ArgumentOutOfRangeException>(this, other, "other");
-            }
-
-            if (result.RowCount != RowCount || result.ColumnCount != ColumnCount)
-            {
-                throw DimensionsDontMatch<ArgumentOutOfRangeException>(this, result, "result");
-            }
-
             var diagOther = other as DiagonalMatrix;
             var diagResult = result as DiagonalMatrix;
 
             if (diagOther == null || diagResult == null)
             {
-                base.Subtract(other, result);
+                base.DoSubtract(other, result);
             }
             else
             {
@@ -341,7 +350,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// </summary>
         /// <param name="source">The array to copy the values from. The length of the vector should be
         /// Min(Rows, Columns).</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="source"/> is <see langword="null" />.</exception>   
+        /// <exception cref="ArgumentNullException">If <paramref name="source"/> is <see langword="null" />.</exception>
         /// <exception cref="ArgumentException">If the length of <paramref name="source"/> does not
         /// equal Min(Rows, Columns).</exception>
         /// <remarks>For non-square matrices, the elements of <paramref name="source"/> are copied to
@@ -366,7 +375,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// </summary>
         /// <param name="source">The vector to copy the values from. The length of the vector should be
         /// Min(Rows, Columns).</param>
-        /// <exception cref="ArgumentNullException">If <paramref name="source"/> is <see langword="null" />.</exception>   
+        /// <exception cref="ArgumentNullException">If <paramref name="source"/> is <see langword="null" />.</exception>
         /// <exception cref="ArgumentException">If the length of <paramref name="source"/> does not
         /// equal Min(Rows, Columns).</exception>
         /// <remarks>For non-square matrices, the elements of <paramref name="source"/> are copied to
@@ -393,7 +402,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// </summary>
         /// <param name="scalar">The scalar to multiply the matrix with.</param>
         /// <param name="result">The matrix to store the result of the multiplication.</param>
-        /// <exception cref="ArgumentNullException">If the result matrix is <see langword="null" />.</exception> 
+        /// <exception cref="ArgumentNullException">If the result matrix is <see langword="null" />.</exception>
         /// <exception cref="ArgumentException">If the result matrix's dimensions are not the same as this matrix.</exception>
         protected override void DoMultiply(float scalar, Matrix<float> result)
         {
@@ -473,7 +482,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// Multiplies this matrix with another matrix and returns the result.
         /// </summary>
         /// <param name="other">The matrix to multiply with.</param>
-        /// <exception cref="ArgumentException">If <strong>this.Columns != other.Rows</strong>.</exception>        
+        /// <exception cref="ArgumentException">If <strong>this.Columns != other.Rows</strong>.</exception>
         /// <exception cref="ArgumentNullException">If the other matrix is <see langword="null" />.</exception>
         /// <returns>The result of multiplication.</returns>
         public override Matrix<float> Multiply(Matrix<float> other)
@@ -647,7 +656,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// Multiplies this matrix with transpose of another matrix and returns the result.
         /// </summary>
         /// <param name="other">The matrix to multiply with.</param>
-        /// <exception cref="ArgumentException">If <strong>this.Columns != other.Rows</strong>.</exception>        
+        /// <exception cref="ArgumentException">If <strong>this.Columns != other.Rows</strong>.</exception>
         /// <exception cref="ArgumentNullException">If the other matrix is <see langword="null" />.</exception>
         /// <returns>The result of multiplication.</returns>
         public override Matrix<float> TransposeAndMultiply(Matrix<float> other)
@@ -672,7 +681,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
 
         /// <summary>
         /// Returns the transpose of this matrix.
-        /// </summary>        
+        /// </summary>
         /// <returns>The transpose of this matrix.</returns>
         public override Matrix<float> Transpose()
         {
@@ -689,7 +698,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         }
 
         /// <summary>Calculates the L2 norm.</summary>
-        /// <returns>The L2 norm of the matrix.</returns>   
+        /// <returns>The L2 norm of the matrix.</returns>
         public override float L2Norm()
         {
             return _data.Aggregate(float.NegativeInfinity, (current, t) => Math.Max(current, Math.Abs(t)));
@@ -704,7 +713,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         }
 
         /// <summary>Calculates the infinity norm of this matrix.</summary>
-        /// <returns>The infinity norm of this matrix.</returns>   
+        /// <returns>The infinity norm of this matrix.</returns>
         public override float InfinityNorm()
         {
             return L1Norm();
@@ -755,7 +764,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// <summary>
         /// Returns a new matrix containing the lower triangle of this matrix.
         /// </summary>
-        /// <returns>The lower triangle of this matrix.</returns>  
+        /// <returns>The lower triangle of this matrix.</returns>
         public override Matrix<float> LowerTriangle()
         {
             return Clone();
@@ -825,7 +834,7 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// <summary>
         /// Returns a new matrix containing the upper triangle of this matrix.
         /// </summary>
-        /// <returns>The upper triangle of this matrix.</returns>   
+        /// <returns>The upper triangle of this matrix.</returns>
         public override Matrix<float> UpperTriangle()
         {
             return Clone();
@@ -897,10 +906,10 @@ namespace MathNet.Numerics.LinearAlgebra.Single
         /// <returns>The requested sub-matrix.</returns>
         /// <exception cref="ArgumentOutOfRangeException">If: <list><item><paramref name="rowIndex"/> is
         /// negative, or greater than or equal to the number of rows.</item>
-        /// <item><paramref name="columnIndex"/> is negative, or greater than or equal to the number 
+        /// <item><paramref name="columnIndex"/> is negative, or greater than or equal to the number
         /// of columns.</item>
         /// <item><c>(columnIndex + columnLength) &gt;= Columns</c></item>
-        /// <item><c>(rowIndex + rowLength) &gt;= Rows</c></item></list></exception>        
+        /// <item><c>(rowIndex + rowLength) &gt;= Rows</c></item></list></exception>
         /// <exception cref="ArgumentOutOfRangeException">If <paramref name="rowCount"/> or <paramref name="columnCount"/>
         /// is not positive.</exception>
         public override Matrix<float> SubMatrix(int rowIndex, int rowCount, int columnIndex, int columnCount)

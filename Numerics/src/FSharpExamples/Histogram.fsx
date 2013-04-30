@@ -1,8 +1,10 @@
-﻿// <copyright file="DenseVector.fs" company="Math.NET">
+﻿// <copyright file="Histogram.fsx" company="Math.NET">
 // Math.NET Numerics, part of the Math.NET Project
-// http://mathnet.opensourcedotnet.info
+// http://numerics.mathdotnet.com
+// http://github.com/mathnet/mathnet-numerics
+// http://mathnetnumerics.codeplex.com
 //
-// Copyright (c) 2009 Math.NET
+// Copyright (c) 2009-2013 Math.NET
 //
 // Permission is hereby granted, free of charge, to any person
 // obtaining a copy of this software and associated documentation
@@ -25,29 +27,22 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 // </copyright>
-module MathNet.Numerics.FSharp.Examples.DenseVector
 
-open MathNet.Numerics.LinearAlgebra
-open MathNet.Numerics.LinearAlgebra.Double
+#r "../../out/lib/Net40/MathNet.Numerics.dll"
+#r "../../out/lib/Net40/MathNet.Numerics.FSharp.dll"
 
-// Create a new 100 dimensional dense vector.
-let v = DenseVector.init 100 (fun i -> float i / 100.0)
+open MathNet.Numerics.Statistics
 
-// Another way to create a 100 dimensional dense vector is using the vector function.
-let w = vector (List.init 100 (fun i -> float i ** 2.0))
+/// The number of buckets to use in our histogram.
+let B = 4
 
-// Vectors can also be constructed from sequences.
-let t = DenseVector.ofSeq (seq { for i in 1 .. 100 do yield float i })
+/// Create a small dataset.
+let data = [| 0.5; 1.5; 2.5; 3.5; 4.5; 5.5; 6.5; 7.5; 8.5; 9.5 |]
 
-// We can now add two vectors together ...
-let z = v + w
+/// A histogram with 4 buckets for this dataset.
+let hist = new Histogram(data, B)
 
-// ... or scale them in the process.
-let x = v + 3.0 * t
-
-
-// We can create a vector from an integer range (in this case, 5 and 10 inclusive) ...
-let s = DenseVector.range 5 10
-
-// ... or we can create a vector from a double range with a particular step size.
-let r = DenseVector.rangef 0.0 0.1 10.0
+// Print some histogram information.
+printfn "Histogram.ToString(): %O" hist
+for i in 0 .. B-1 do
+    printfn "Bucket %d contains %f datapoints." i hist.[i].Count

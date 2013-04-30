@@ -1,4 +1,35 @@
-﻿using System;
+﻿// <copyright file="SparseVectorStorage.cs" company="Math.NET">
+// Math.NET Numerics, part of the Math.NET Project
+// http://numerics.mathdotnet.com
+// http://github.com/mathnet/mathnet-numerics
+// http://mathnetnumerics.codeplex.com
+//
+// Copyright (c) 2009-2013 Math.NET
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+// </copyright>
+
+using System;
+using System.Collections.Generic;
 using MathNet.Numerics.Properties;
 
 namespace MathNet.Numerics.LinearAlgebra.Storage
@@ -8,8 +39,6 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
         where T : struct, IEquatable<T>, IFormattable
     {
         // [ruegg] public fields are OK here
-
-        readonly T _zero;
 
         /// <summary>
         /// Array that contains the indices of the non-zero values.
@@ -26,10 +55,9 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
         /// </summary>
         public int ValueCount;
 
-        internal SparseVectorStorage(int length, T zero = default(T))
+        internal SparseVectorStorage(int length)
             : base(length)
         {
-            _zero = zero;
             Indices = new int[0];
             Values = new T[0];
             ValueCount = 0;
@@ -42,7 +70,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
         {
             // Search if item idex exists in NonZeroIndices array in range "0 - nonzero values count"
             var itemIndex = Array.BinarySearch(Indices, 0, ValueCount, index);
-            return itemIndex >= 0 ? Values[itemIndex] : _zero;
+            return itemIndex >= 0 ? Values[itemIndex] : Zero;
         }
 
         /// <summary>
@@ -55,7 +83,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             if (itemIndex >= 0)
             {
                 // Non-zero item found in matrix
-                if (_zero.Equals(value))
+                if (Zero.Equals(value))
                 {
                     // Delete existing item
                     RemoveAtIndexUnchecked(itemIndex);
@@ -69,7 +97,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             else
             {
                 // Item not found. Add new value
-                if (!_zero.Equals(value))
+                if (!Zero.Equals(value))
                 {
                     InsertAtIndexUnchecked(~itemIndex, index, value);
                 }
@@ -180,6 +208,200 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
+        public override bool Equals(VectorStorage<T> other)
+        {
+            // Reject equality when the argument is null or has a different shape.
+            if (other == null || Length != other.Length)
+            {
+                return false;
+            }
+
+            // Accept if the argument is the same object as this.
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            var otherSparse = other as SparseVectorStorage<T>;
+            if (otherSparse == null)
+            {
+                return base.Equals(other);
+            }
+
+            int i = 0, j = 0;
+            while (i < ValueCount || j < otherSparse.ValueCount)
+            {
+                if (j >= otherSparse.ValueCount || i < ValueCount && Indices[i] < otherSparse.Indices[j])
+                {
+                    if (!Zero.Equals(Values[i++]))
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (i >= ValueCount || j < otherSparse.ValueCount && otherSparse.Indices[j] < Indices[i])
+                {
+                    if (!Zero.Equals(otherSparse.Values[j++]))
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (!Values[i].Equals(otherSparse.Values[j]))
+                {
+                    return false;
+                }
+
+                i++;
+                j++;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns a hash code for this instance.
+        /// </summary>
+        /// <returns>
+        /// A hash code for this instance, suitable for use in hashing algorithms and data structures like a hash table.
+        /// </returns>
+        public override int GetHashCode()
+        {
+            var values = Values;
+            var hashNum = Math.Min(ValueCount, 25);
+            int hash = 17;
+            unchecked
+            {
+                for (var i = 0; i < hashNum; i++)
+                {
+                    hash = hash * 31 + values[i].GetHashCode();
+                }
+            }
+            return hash;
+        }
+
+        // INITIALIZATION
+
+        public static SparseVectorStorage<T> OfVector(VectorStorage<T> vector)
+        {
+            var storage = new SparseVectorStorage<T>(vector.Length);
+            vector.CopyToUnchecked(storage, skipClearing: true);
+            return storage;
+        }
+
+        public static SparseVectorStorage<T> OfInit(int length, Func<int, T> init)
+        {
+            if (length < 1)
+            {
+                throw new ArgumentOutOfRangeException("length", string.Format(Resources.ArgumentLessThanOne, length));
+            }
+
+            var indices = new List<int>();
+            var values = new List<T>();
+            for (int i = 0; i < length; i++)
+            {
+                var item = init(i);
+                if (!Zero.Equals(item))
+                {
+                    values.Add(item);
+                    indices.Add(i);
+                }
+            }
+            return new SparseVectorStorage<T>(length)
+                {
+                    Indices = indices.ToArray(),
+                    Values = values.ToArray(),
+                    ValueCount = values.Count
+                };
+        }
+
+        public static SparseVectorStorage<T> OfEnumerable(IEnumerable<T> data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+
+            var indices = new List<int>();
+            var values = new List<T>();
+            int index = 0;
+
+            foreach (T item in data)
+            {
+                if (!Zero.Equals(item))
+                {
+                    values.Add(item);
+                    indices.Add(index);
+                }
+                index++;
+            }
+
+            return new SparseVectorStorage<T>(index)
+                {
+                    Indices = indices.ToArray(),
+                    Values = values.ToArray(),
+                    ValueCount = values.Count
+                };
+        }
+
+        public static SparseVectorStorage<T> OfIndexedEnumerable(int length, IEnumerable<Tuple<int, T>> data)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException("data");
+            }
+
+            var indices = new List<int>();
+            var values = new List<T>();
+            foreach (var item in data)
+            {
+                if (!Zero.Equals(item.Item2))
+                {
+                    values.Add(item.Item2);
+                    indices.Add(item.Item1);
+                }
+            }
+
+            var indicesArray = indices.ToArray();
+            var valuesArray = values.ToArray();
+            Sorting.Sort(indicesArray, valuesArray);
+
+            return new SparseVectorStorage<T>(length)
+                {
+                    Indices = indicesArray,
+                    Values = valuesArray,
+                    ValueCount = values.Count
+                };
+        }
+
+        // ENUMERATION
+
+        public override IEnumerable<T> Enumerate()
+        {
+            int k = 0;
+            for (int i = 0; i < Length; i++)
+            {
+                yield return k < ValueCount && Indices[k] == i
+                    ? Values[k++]
+                    : Zero;
+            }
+        }
+
+        public override IEnumerable<Tuple<int, T>> EnumerateNonZero()
+        {
+            for (var i = 0; i < ValueCount; i++)
+            {
+                if (!Zero.Equals(Values[i]))
+                {
+                    yield return new Tuple<int, T>(Indices[i], Values[i]);
+                }
+            }
+        }
+
+        // VECTOR COPY
+
         internal override void CopyToUnchecked(VectorStorage<T> target, bool skipClearing = false)
         {
             var sparseTarget = target as SparseVectorStorage<T>;
@@ -228,6 +450,48 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                 Buffer.BlockCopy(Indices, 0, target.Indices, 0, ValueCount * Constants.SizeOfInt);
             }
         }
+
+        // Row COPY
+
+        internal override void CopyToRowUnchecked(MatrixStorage<T> target, int rowIndex, bool skipClearing = false)
+        {
+            if (!skipClearing)
+            {
+                target.Clear(rowIndex, 1, 0, Length);
+            }
+
+            if (ValueCount == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ValueCount; i++)
+            {
+                target.At(rowIndex, Indices[i], Values[i]);
+            }
+        }
+
+        // COLUMN COPY
+
+        internal override void CopyToColumnUnchecked(MatrixStorage<T> target, int columnIndex, bool skipClearing = false)
+        {
+            if (!skipClearing)
+            {
+                target.Clear(0, Length, columnIndex, 1);
+            }
+
+            if (ValueCount == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ValueCount; i++)
+            {
+                target.At(Indices[i], columnIndex, Values[i]);
+            }
+        }
+
+        // SUB-VECTOR COPY
 
         internal override void CopySubVectorToUnchecked(VectorStorage<T> target,
             int sourceIndex, int targetIndex, int count,
@@ -296,7 +560,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
 
                 return;
             }
-            
+
             // special case for empty target - much faster
             if (target.ValueCount == 0)
             {
@@ -325,6 +589,76 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             {
                 target.At(Indices[i] + offset, Values[i]);
             }
+        }
+
+        // FUNCTIONAL COMBINATORS
+
+        public override void MapInplace(Func<T, T> f, bool forceMapZeros = false)
+        {
+            var indices = new List<int>();
+            var values = new List<T>();
+            if (forceMapZeros || !Zero.Equals(f(Zero)))
+            {
+                int k = 0;
+                for (int i = 0; i < Length; i++)
+                {
+                    var item = k < ValueCount && (Indices[k]) == i ? f(Values[k++]) : f(Zero);
+                    if (!Zero.Equals(item))
+                    {
+                        values.Add(item);
+                        indices.Add(i);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < ValueCount; i++)
+                {
+                    var item = f(Values[i]);
+                    if (!Zero.Equals(item))
+                    {
+                        values.Add(item);
+                        indices.Add(Indices[i]);
+                    }
+                }
+            }
+            Indices = indices.ToArray();
+            Values = values.ToArray();
+            ValueCount = values.Count;
+        }
+
+        public override void MapIndexedInplace(Func<int, T, T> f, bool forceMapZeros = false)
+        {
+            var indices = new List<int>();
+            var values = new List<T>();
+            if (forceMapZeros || !Zero.Equals(f(0, Zero)))
+            {
+                int k = 0;
+                for (int i = 0; i < Length; i++)
+                {
+                    var item = k < ValueCount && (Indices[k]) == i ? f(i, Values[k++]) : f(i, Zero);
+                    if (!Zero.Equals(item))
+                    {
+                        values.Add(item);
+                        indices.Add(i);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < ValueCount; i++)
+                {
+                    var item = f(Indices[i], Values[i]);
+                    if (!Zero.Equals(item))
+                    {
+                        values.Add(item);
+                        indices.Add(Indices[i]);
+                    }
+                }
+            }
+            Indices = indices.ToArray();
+            Values = values.ToArray();
+            ValueCount = values.Count;
         }
     }
 }

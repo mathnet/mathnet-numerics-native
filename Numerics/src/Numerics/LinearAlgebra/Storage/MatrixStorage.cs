@@ -1,4 +1,34 @@
-﻿using System;
+﻿// <copyright file="MatrixStorage.cs" company="Math.NET">
+// Math.NET Numerics, part of the Math.NET Project
+// http://numerics.mathdotnet.com
+// http://github.com/mathnet/mathnet-numerics
+// http://mathnetnumerics.codeplex.com
+//
+// Copyright (c) 2009-2013 Math.NET
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+// </copyright>
+
+using System;
 using MathNet.Numerics.Properties;
 
 namespace MathNet.Numerics.LinearAlgebra.Storage
@@ -9,6 +39,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
     {
         // [ruegg] public fields are OK here
 
+        protected static readonly T Zero = Common.ZeroOf<T>();
         public readonly int RowCount;
         public readonly int ColumnCount;
 
@@ -103,7 +134,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             {
                 for (var j = 0; j < ColumnCount; j++)
                 {
-                    At(i, j, default(T));
+                    At(i, j, Zero);
                 }
             }
         }
@@ -114,7 +145,7 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             {
                 for (var j = columnIndex; j < columnIndex + columnCount; j++)
                 {
-                    At(i, j, default(T));
+                    At(i, j, Zero);
                 }
             }
         }
@@ -195,6 +226,8 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             return hash;
         }
 
+        // MATRIX COPY
+
         public void CopyTo(MatrixStorage<T> target, bool skipClearing = false)
         {
             if (target == null)
@@ -264,6 +297,19 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
+        // ROW COPY
+
+        public void CopyRowTo(VectorStorage<T> target, int rowIndex, bool skipClearing = false)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException("target");
+            }
+
+            ValidateRowRange(target, rowIndex);
+            CopySubRowToUnchecked(target, rowIndex, 0, 0, ColumnCount, skipClearing);
+        }
+
         public void CopySubRowTo(VectorStorage<T> target, int rowIndex,
             int sourceColumnIndex, int targetColumnIndex, int columnCount,
             bool skipClearing = false)
@@ -274,7 +320,6 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
 
             ValidateSubRowRange(target, rowIndex, sourceColumnIndex, targetColumnIndex, columnCount);
-
             CopySubRowToUnchecked(target, rowIndex, sourceColumnIndex, targetColumnIndex, columnCount, skipClearing);
         }
 
@@ -288,6 +333,19 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
         }
 
+        // COLUMN COPY
+
+        public void CopyColumnTo(VectorStorage<T> target, int columnIndex, bool skipClearing = false)
+        {
+            if (target == null)
+            {
+                throw new ArgumentNullException("target");
+            }
+
+            ValidateColumnRange(target, columnIndex);
+            CopySubColumnToUnchecked(target, columnIndex, 0, 0, RowCount, skipClearing);
+        }
+
         public void CopySubColumnTo(VectorStorage<T> target, int columnIndex,
             int sourceRowIndex, int targetRowIndex, int rowCount,
             bool skipClearing = false)
@@ -298,7 +356,6 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
             }
 
             ValidateSubColumnRange(target, columnIndex, sourceRowIndex, targetRowIndex, rowCount);
-
             CopySubColumnToUnchecked(target, columnIndex, sourceRowIndex, targetRowIndex, rowCount, skipClearing);
         }
 
@@ -311,6 +368,8 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                 target.At(ii, At(i, columnIndex));
             }
         }
+
+        // EXTRACT
 
         public virtual T[] ToRowMajorArray()
         {
@@ -351,6 +410,30 @@ namespace MathNet.Numerics.LinearAlgebra.Storage
                 }
             }
             return ret;
+        }
+
+        // FUNCTIONAL COMBINATORS
+
+        public virtual void MapInplace(Func<T, T> f, bool forceMapZeros = false)
+        {
+            for (int i = 0; i < RowCount; i++)
+            {
+                for (int j = 0; j < ColumnCount; j++)
+                {
+                    At(i, j, f(At(i, j)));
+                }
+            }
+        }
+
+        public virtual void MapIndexedInplace(Func<int, int, T, T> f, bool forceMapZeros = false)
+        {
+            for (int i = 0; i < RowCount; i++)
+            {
+                for (int j = 0; j < ColumnCount; j++)
+                {
+                    At(i, j, f(i, j, At(i, j)));
+                }
+            }
         }
     }
 }

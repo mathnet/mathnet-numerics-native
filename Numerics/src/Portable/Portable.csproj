@@ -37,7 +37,7 @@
     <!-- A reference to the entire .NET Framework is automatically included -->
     <EmbeddedResource Include="..\Numerics\Properties\Resources.resx">
       <Link>Properties\Resources.resx</Link>
-      <Generator>ResXFileCodeGenerator</Generator>
+      <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources1.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
@@ -191,6 +191,12 @@
     </Compile>
     <Compile Include="..\Numerics\Distributions\Multivariate\Wishart.cs">
       <Link>Distributions\Multivariate\Wishart.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Financial\AbsoluteReturnMeasures.cs">
+      <Link>Financial\AbsoluteReturnMeasures.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Financial\AbsoluteRiskMeasures.cs">
+      <Link>Financial\AbsoluteRiskMeasures.cs</Link>
     </Compile>
     <Compile Include="..\Numerics\GlobalizationHelper.cs">
       <Link>GlobalizationHelper.cs</Link>
@@ -717,6 +723,9 @@
     <Compile Include="..\Numerics\LinearAlgebra\Generic\Matrix.Arithmetic.cs">
       <Link>LinearAlgebra\Generic\Matrix.Arithmetic.cs</Link>
     </Compile>
+    <Compile Include="..\Numerics\LinearAlgebra\Generic\Matrix.BCL.cs">
+      <Link>LinearAlgebra\Generic\Matrix.BCL.cs</Link>
+    </Compile>
     <Compile Include="..\Numerics\LinearAlgebra\Generic\Matrix.cs">
       <Link>LinearAlgebra\Generic\Matrix.cs</Link>
     </Compile>
@@ -746,6 +755,9 @@
     </Compile>
     <Compile Include="..\Numerics\LinearAlgebra\Generic\Solvers\StopCriterium\StopLevel.cs">
       <Link>LinearAlgebra\Generic\Solvers\StopCriterium\StopLevel.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\LinearAlgebra\Generic\Vector.BCL.cs">
+      <Link>LinearAlgebra\Generic\Vector.BCL.cs</Link>
     </Compile>
     <Compile Include="..\Numerics\LinearAlgebra\Generic\Vector.cs">
       <Link>LinearAlgebra\Generic\Vector.cs</Link>
@@ -1014,6 +1026,9 @@
     <Compile Include="..\numerics\specialfunctions\Stability.cs">
       <Link>SpecialFunctions\Stability.cs</Link>
     </Compile>
+    <Compile Include="..\Numerics\Statistics\ArrayStatistics.cs">
+      <Link>Statistics\ArrayStatistics.cs</Link>
+    </Compile>
     <Compile Include="..\Numerics\Statistics\Correlation.cs">
       <Link>Statistics\Correlation.cs</Link>
     </Compile>
@@ -1022,6 +1037,15 @@
     </Compile>
     <Compile Include="..\Numerics\Statistics\Histogram.cs">
       <Link>Statistics\Histogram.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Statistics\MCMC\HybridMC.cs">
+      <Link>Statistics\MCMC\HybridMC.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Statistics\MCMC\HybridMCGeneric.cs">
+      <Link>Statistics\MCMC\HybridMCGeneric.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Statistics\MCMC\MCMCDiagnostics.cs">
+      <Link>Statistics\MCMC\MCMCDiagnostics.cs</Link>
     </Compile>
     <Compile Include="..\Numerics\Statistics\MCMC\MCMCSampler.cs">
       <Link>Statistics\MCMC\MCMCSampler.cs</Link>
@@ -1035,14 +1059,26 @@
     <Compile Include="..\Numerics\Statistics\MCMC\RejectionSampler.cs">
       <Link>Statistics\MCMC\RejectionSampler.cs</Link>
     </Compile>
+    <Compile Include="..\Numerics\Statistics\MCMC\UnivariateHybridMC.cs">
+      <Link>Statistics\MCMC\UnivariateHybridMC.cs</Link>
+    </Compile>
     <Compile Include="..\Numerics\Statistics\MCMC\UnivariateSliceSampler.cs">
       <Link>Statistics\MCMC\UnivariateSliceSampler.cs</Link>
     </Compile>
     <Compile Include="..\Numerics\Statistics\Percentile.cs">
       <Link>Statistics\Percentile.cs</Link>
     </Compile>
+    <Compile Include="..\Numerics\Statistics\QuantileDefinition.cs">
+      <Link>Statistics\QuantileDefinition.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Statistics\SortedArrayStatistics.cs">
+      <Link>Statistics\SortedArrayStatistics.cs</Link>
+    </Compile>
     <Compile Include="..\Numerics\Statistics\Statistics.cs">
       <Link>Statistics\Statistics.cs</Link>
+    </Compile>
+    <Compile Include="..\Numerics\Statistics\StreamingStatistics.cs">
+      <Link>Statistics\StreamingStatistics.cs</Link>
     </Compile>
     <Compile Include="..\Numerics\TargetedPatchingOptOutAttribute.cs">
       <Link>TargetedPatchingOptOutAttribute.cs</Link>
